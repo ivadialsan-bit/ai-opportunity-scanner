@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Scanner</p>
+    <h1>Скан по городу и нише</h1>
+    <p class="sub">Источник v1: OSM / Overpass. Это fallback, не полная база рынка.</p>
+  </div>
+</section>
+
+<section class="card">
+  <form method="post" action="/scanner" class="form-grid">
+    <label>
+      Город
+      <select name="city">
+        {% for c in cities %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Ниша
+      <input name="niche" list="niches" value="кондиционеры">
+      <datalist id="niches">
+        {% for n in niches %}
+        <option value="{{ n }}"></option>
+        {% endfor %}
+      </datalist>
+    </label>
+
+    <label>
+      Источник
+      <select name="source">
+        <option value="osm">OSM / Overpass</option>
+      </select>
+    </label>
+
+    <label>
+      Лимит
+      <input name="limit" type="number" value="50" min="1" max="200">
+    </label>
+
+    <label>
+      Confidence
+      <select name="min_confidence">
+        <option value="medium">medium</option>
+        <option value="high">high</option>
+        <option value="low">low</option>
+      </select>
+    </label>
+
+    <label class="check">
+      <input type="checkbox" name="require_contact" checked>
+      Только с контактами
+    </label>
+
+    <label class="check">
+      <input type="checkbox" name="exclude_chains" checked>
+      Исключать сети
+    </label>
+
+    <button class="btn primary" type="submit">Сканировать и добавить в базу</button>
+  </form>
+</section>
+
+{% if result %}
+<section class="card">
+  <h2>Результат</h2>
+  <div class="stats inline">
+    <div class="stat"><strong>{{ result.raw_count }}</strong><span>сырых</span></div>
+    <div class="stat"><strong>{{ result.sales_count }}</strong><span>после фильтра</span></div>
+    <div class="stat"><strong>{{ result.imported }}</strong><span>добавлено новых</span></div>
+  </div>
+
+  <h3>Top</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Score</th>
+        <th>Компания</th>
+        <th>Телефон</th>
+        <th>Сайт</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lead in result.top %}
+      <tr>
+        <td>{{ lead.lead_score }}</td>
+        <td>{{ lead.name }}</td>
+        <td>{{ lead.phone or "-" }}</td>
+        <td>{{ lead.website or "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

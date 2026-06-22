@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title or "AI Sales Cockpit" }}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">AI</div>
+      <div>
+        <strong>Sales Cockpit</strong>
+        <span>ручные продажи</span>
+      </div>
+    </div>
+
+    <nav>
+      <a href="/">Главная</a>
+      <a href="/scanner">Scanner</a>
+      <a href="/leads">Lead Queue</a>
+      <a href="http://5.129.200.18:8080/demo-48h/" target="_blank">Demo 48H</a>
+    </nav>
+
+    <div class="side-note">
+      Без автоспама. Без автодозвона. Только ручной контакт.
+    </div>
+  </aside>
+
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    function copyText(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.innerText || el.value || "");
+      const old = document.title;
+      document.title = "Скопировано";
+      setTimeout(() => document.title = old, 800);
+    }
+  </script>
+</body>
+</html>

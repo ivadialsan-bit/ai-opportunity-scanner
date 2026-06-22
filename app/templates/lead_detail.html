@@ -1,0 +1,137 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Lead #{{ lead.id }}</p>
+    <h1>{{ lead.name }}</h1>
+    <p class="sub">{{ lead.city }} · {{ lead.niche }} · priority {{ lead.sales_priority }}</p>
+  </div>
+  <a class="btn" href="/leads">Назад к очереди</a>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Контакты</h2>
+    <p><strong>Телефон:</strong> {{ lead.phone or "-" }}</p>
+    <p><strong>Email:</strong> {{ lead.email or "-" }}</p>
+    <p><strong>Сайт:</strong>
+      {% if lead.website %}
+        <a href="{{ lead.website }}" target="_blank">{{ lead.website }}</a>
+      {% else %}
+        -
+      {% endif %}
+    </p>
+    <p><strong>Адрес:</strong> {{ lead.address or "-" }}</p>
+    <p><strong>Причина:</strong> {{ lead.priority_reason or lead.opportunity_flags }}</p>
+    <p><strong>Статус:</strong> <span class="pill">{{ lead.status }}</span></p>
+  </div>
+
+  <div class="card">
+    <h2>Быстрые ссылки</h2>
+    <p><a class="btn primary" href="{{ demo_url }}" target="_blank">Открыть demo 48H</a></p>
+    {% if lead.website %}
+    <p><a class="btn" href="{{ lead.website }}" target="_blank">Открыть сайт лида</a></p>
+    {% endif %}
+    <div class="copy-box" id="demo-url">{{ demo_url }}</div>
+    <button class="btn" onclick="copyText('demo-url')">Скопировать demo-ссылку</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Первое сообщение</h2>
+  <div class="message" id="message">{{ lead.first_message }}</div>
+  <button class="btn primary" onclick="copyText('message')">Скопировать сообщение</button>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Скрипт звонка</h2>
+    <div class="message" id="call-script">Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
+
+Я коротко. Нашёл вашу компанию по теме кондиционеров/сплит-систем. Я не продаю рекламу и не обещаю рост заявок. Делаю простую цифровую точку заявки за 48 часов: мини-страница, кнопки связи, FAQ, тексты услуг, скрипт звонка/переписки и таблица учёта заявок.
+
+Могу показать пример?</div>
+    <button class="btn" onclick="copyText('call-script')">Скопировать скрипт</button>
+  </div>
+
+  <div class="card">
+    <h2>Мини-КП</h2>
+    <div class="message" id="offer">Пакет “Цифровая точка заявки за 48 часов”.
+
+Мини-пилот — 5 900 ₽:
+мини-страница, кнопки связи, 5 FAQ, первый скрипт ответа.
+
+Первый пилот — 9 900 ₽:
+плюс тексты услуг, скрипт звонка, скрипт переписки и таблица заявок.
+
+Стандарт — 14 900 ₽:
+плюс расширенный FAQ, ответы на отзывы и инструкция для менеджера.</div>
+    <button class="btn" onclick="copyText('offer')">Скопировать КП</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Обновить статус</h2>
+  <form method="post" action="/leads/{{ lead.id }}/update" class="form-grid">
+    <label>
+      Статус
+      <select name="status">
+        {% for s in statuses %}
+        <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Следующее действие
+      <input name="next_action" value="{{ lead.next_action }}">
+    </label>
+
+    <label>
+      ЛПР
+      <input name="decision_maker" value="{{ lead.decision_maker }}">
+    </label>
+
+    <label>
+      Боль подтверждена
+      <input name="pain_confirmed" value="{{ lead.pain_confirmed }}">
+    </label>
+
+    <label>
+      КП отправлено
+      <input name="offer_sent" value="{{ lead.offer_sent }}">
+    </label>
+
+    <label>
+      Цена обсуждалась
+      <input name="price_discussed" value="{{ lead.price_discussed }}">
+    </label>
+
+    <label class="full">
+      Результат
+      <input name="result" value="{{ lead.result }}">
+    </label>
+
+    <label class="full">
+      Заметки звонка
+      <textarea name="call_notes" rows="5">{{ lead.call_notes }}</textarea>
+    </label>
+
+    <button class="btn primary" type="submit">Сохранить</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>История</h2>
+  {% if events %}
+    {% for e in events %}
+    <div class="event">
+      <strong>{{ e.created_at }}</strong>
+      <span>{{ e.note }}</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">Пока нет событий.</p>
+  {% endif %}
+</section>
+{% endblock %}

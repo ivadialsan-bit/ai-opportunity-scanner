@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">AI Opportunity Scanner</p>
+    <h1>Операторская панель для поиска и прозвона малого бизнеса</h1>
+    <p class="sub">Задача: каждый день находить цифровые дыры, звонить, отправлять пример, закрывать мини-пилот.</p>
+  </div>
+  <a class="btn primary" href="/leads">Начать прозвон</a>
+</section>
+
+<section class="stats">
+  <div class="stat"><strong>{{ stats.total }}</strong><span>лидов в базе</span></div>
+  <div class="stat"><strong>{{ stats.new }}</strong><span>новые</span></div>
+  <div class="stat"><strong>{{ stats.interested }}</strong><span>в работе</span></div>
+  <div class="stat"><strong>{{ stats.paid }}</strong><span>оплачено</span></div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Сегодняшний процесс</h2>
+    <ol class="clean-list">
+      <li>Открыть Lead Queue.</li>
+      <li>Взять 10 первых лидов.</li>
+      <li>Сначала звонок.</li>
+      <li>Если не дозвонился — ручное сообщение.</li>
+      <li>Статус фиксировать сразу.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Демо-ссылка</h2>
+    <p class="muted">Показывать только после короткого контакта или запроса примера.</p>
+    <div class="copy-box" id="demo-url">{{ demo_url }}</div>
+    <button class="btn" onclick="copyText('demo-url')">Скопировать</button>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between">
+    <h2>Топ лидов</h2>
+    <a class="btn small" href="/leads">Все лиды</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Priority</th>
+        <th>Компания</th>
+        <th>Город</th>
+        <th>Контакт</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lead in leads %}
+      <tr>
+        <td>{{ lead.sales_priority }}</td>
+        <td><a href="/leads/{{ lead.id }}">{{ lead.name }}</a></td>
+        <td>{{ lead.city }}</td>
+        <td>{{ lead.phone or lead.email or lead.website }}</td>
+        <td><span class="pill">{{ lead.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

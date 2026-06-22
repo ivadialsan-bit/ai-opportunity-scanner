@@ -16,3 +16,8 @@ backups/
 .vscode/
 .DS_Store
 tmp/
+
+# App runtime data
+app/data/
+*.sqlite3
+*.db

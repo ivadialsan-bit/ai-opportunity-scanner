@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Lead Queue</p>
+    <h1>Очередь прозвона</h1>
+    <p class="sub">Фильтруй, звони, фиксируй статус. Не копи базу ради базы.</p>
+  </div>
+  <form action="/import-shortlist" method="post">
+    <button class="btn" type="submit">Импортировать последний shortlist</button>
+  </form>
+</section>
+
+<section class="card">
+  <form method="get" action="/leads" class="filters">
+    <input name="q" value="{{ q }}" placeholder="поиск по названию / телефону / email">
+    <select name="status">
+      <option value="">Все статусы</option>
+      {% for s in statuses %}
+      <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <select name="city">
+      <option value="">Все города</option>
+      {% for c in cities %}
+      <option value="{{ c }}" {% if c == selected_city %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn primary" type="submit">Фильтр</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="row-between">
+    <h2>Лиды: {{ leads|length }}</h2>
+    <div class="muted">Demo: {{ demo_url }}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Priority</th>
+        <th>Компания</th>
+        <th>Город</th>
+        <th>Контакт</th>
+        <th>Дыра</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lead in leads %}
+      <tr>
+        <td><strong>{{ lead.sales_priority }}</strong></td>
+        <td>
+          <a href="/leads/{{ lead.id }}"><strong>{{ lead.name }}</strong></a>
+          <div class="muted smalltext">{{ lead.priority_reason }}</div>
+        </td>
+        <td>{{ lead.city }}</td>
+        <td>
+          <div>{{ lead.phone or "-" }}</div>
+          <div class="muted smalltext">{{ lead.email or lead.website or "" }}</div>
+        </td>
+        <td>{{ lead.target_confidence or "-" }}</td>
+        <td><span class="pill">{{ lead.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
