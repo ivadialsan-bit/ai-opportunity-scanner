@@ -559,3 +559,53 @@ textarea { resize: vertical; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ── правки консилиума ── */
+.day-progress{display:flex;align-items:center;gap:1.5rem;padding:.75rem 1.5rem;background:#0d1117;border-bottom:1px solid #21262d;flex-wrap:wrap}
+.dp-label{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.dp-bars{display:flex;gap:1rem;flex:1;flex-wrap:wrap}
+.dp-item{display:flex;align-items:center;gap:.5rem;min-width:120px}
+.dp-name{font-size:12px;color:#8b949e;white-space:nowrap}
+.dp-track{flex:1;background:#21262d;border-radius:4px;height:6px;min-width:60px}
+.dp-fill{height:6px;border-radius:4px;background:#1f6feb;transition:width .3s}
+.dp-fill-2{background:#3fb950}
+.dp-fill-3{background:#f0883e}
+.dp-val{font-size:12px;font-weight:600;color:#e6edf3;white-space:nowrap}
+
+.phone-block{margin:.75rem 0 1rem;padding:1rem;background:#0d1117;border-radius:8px;border:1px solid #21262d}
+.phone-big{display:block;font-size:26px;font-weight:700;color:#58a6ff;text-decoration:none;margin-bottom:.75rem;letter-spacing:.02em}
+.phone-big:hover{color:#79c0ff}
+.contact-btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.btn.wa{background:#1a7f4b;color:#fff;border-color:#1a7f4b}
+.btn.wa:hover{background:#1e9d5e}
+
+.status-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;margin:0 0 1rem}
+.sbtn{padding:.6rem .3rem;font-size:12px;font-weight:600;border:2px solid transparent;border-radius:8px;cursor:pointer;text-align:center;transition:all .15s}
+.sbtn-grey{background:#21262d;color:#8b949e;border-color:#30363d}
+.sbtn-red{background:#3d1f1f;color:#f85149;border-color:#6e2b2b}
+.sbtn-yellow{background:#2d2008;color:#e3b341;border-color:#6e4c0e}
+.sbtn-blue{background:#0d2440;color:#58a6ff;border-color:#1f4a7a}
+.sbtn-green{background:#0f2d1f;color:#3fb950;border-color:#1a5c35}
+.sbtn.active{border-color:#fff;transform:scale(1.04)}
+.sbtn-grey.active{background:#30363d}
+.sbtn-red.active{background:#6e2b2b}
+.sbtn-yellow.active{background:#6e4c0e}
+.sbtn-blue.active{background:#1f4a7a}
+.sbtn-green.active{background:#1a5c35}
+
+.script-tabs{display:flex;gap:.3rem;margin-bottom:.75rem;flex-wrap:wrap}
+.stab{padding:.3rem .7rem;font-size:12px;border:1px solid #30363d;border-radius:6px;background:transparent;color:#8b949e;cursor:pointer}
+.stab.active{background:#1f6feb;color:#fff;border-color:#1f6feb}
+
+.objections{margin-top:1rem;padding:.75rem;background:#0d1117;border-radius:8px;border:1px solid #21262d}
+.obj-title{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.obj-item{margin-bottom:.5rem;font-size:12px;line-height:1.5}
+.obj-item b{color:#e3b341;display:block}
+.obj-item span{color:#8b949e}
+
+.pill.hot{background:#3d1f1f;color:#f85149;border:1px solid #6e2b2b;font-weight:700}
+
+.next-lead-fixed{position:sticky;bottom:0;padding:1rem;background:linear-gradient(transparent,#0d1117 40%);text-align:center;z-index:10}
+.btn.big{padding:.85rem 2.5rem;font-size:16px;font-weight:700}
+
+.events-card{margin-bottom:5rem}
