@@ -617,3 +617,16 @@ textarea { resize: vertical; }
 .wtb-price{font-size:22px;font-weight:700;color:#3fb950;margin-bottom:.5rem}
 .wtb-what{font-size:12px;color:#8b949e;background:#161b22;border-radius:6px;padding:.5rem .75rem;margin-bottom:.4rem;font-family:var(--font-mono,monospace)}
 .wtb-reason{font-size:12px;color:#6e7681;line-height:1.5}
+
+/* scripts mega block */
+.scripts-mega{margin:1.5rem 0;background:var(--color-background-primary, #0d1117);border:1px solid #21262d;border-radius:12px;overflow:hidden}
+.scripts-nav{display:flex;background:#161b22;border-bottom:1px solid #21262d}
+.snav{flex:1;padding:.65rem .5rem;font-size:13px;font-weight:500;border:none;background:transparent;color:#8b949e;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.snav:hover{color:#e6edf3}
+.snav.active{color:#58a6ff;border-bottom-color:#58a6ff}
+.sp-panel{padding:0}
+.sp-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #21262d;gap:.5rem;flex-wrap:wrap}
+.sp-tabs{display:flex;gap:.3rem;flex-wrap:wrap}
+.sp-email-subject{font-size:13px;color:#8b949e}
+.sp-body{padding:1rem;font-size:13px;color:#c9d1d9;line-height:1.85;white-space:pre-wrap;min-height:120px;max-height:400px;overflow-y:auto}
+.sub-panel{white-space:pre-wrap}
