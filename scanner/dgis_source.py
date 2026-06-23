@@ -258,7 +258,7 @@ def scan_2gis(
                 if len(leads) >= limit:
                     break
 
-            if len(items) < page_size:
+            if len(items) < page_size or page > 5:
                 break
 
             page += 1
