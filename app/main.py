@@ -30,7 +30,7 @@ from scanner.filters import apply_sales_filters
 from scanner.offers import enrich_offer
 from scanner.osm_overpass import build_overpass_query, fetch_overpass, parse_elements
 from scanner.scoring import score_lead
-from app.dgis_source import scan_2gis
+from scanner.yandex_source import scan_yandex
 
 
 app = FastAPI(title="AI Sales Cockpit")
@@ -97,27 +97,55 @@ STATUSES = [
 
 
 NICHES = [
-    "кондиционеры",
-    "сплит-системы",
-    "автокондиционеры",
-    "ремонт холодильников",
-    "сантехник",
-    "электрик",
-    "эвакуатор",
-    "натяжные потолки",
-    "окна",
-    "двери",
-    "клининг",
-    "ремонт квартир",
+    # Ремонт и строительство
+    "сантехник", "электрик", "ремонт квартир", "натяжные потолки",
+    "окна пвх", "двери установка", "плиточник", "штукатурка обои",
+    "кровля", "фундамент", "заборы ворота", "ландшафтный дизайн",
+    # Климат и инженерия
+    "кондиционеры монтаж", "отопление котлы", "вентиляция",
+    "водоснабжение скважина", "канализация септик",
+    # Красота и здоровье
+    "маникюр педикюр", "салон красоты", "парикмахер", "брови ресницы",
+    "косметолог", "массаж", "эпиляция", "тату пирсинг",
+    # Авто
+    "автосервис ремонт", "шиномонтаж", "автозапчасти", "эвакуатор",
+    "детейлинг полировка", "автостекла",
+    # Грузоперевозки
+    "грузоперевозки газель", "переезд грузчики",
+    # Питание
+    "доставка еды", "кейтеринг", "торты на заказ",
+    # Образование
+    "репетитор", "детский центр развития", "автошкола",
+    # Домашние сервисы
+    "клининг уборка", "химчистка мебели", "ремонт бытовой техники",
+    "ремонт телефонов", "ремонт компьютеров",
+    # B2B сервисы
+    "бухгалтер", "юрист", "дизайн интерьера", "фотограф видеограф",
+    "реклама вывески", "печать полиграфия",
+    # Медицина и вет
+    "стоматология", "ветеринарная клиника",
+    # Туризм и досуг
+    "турагентство", "гостиница хостел",
+    # Фитнес
+    "фитнес тренажерный зал", "персональный тренер йога",
 ]
 
-
 CITIES = [
-    "Волгоград",
-    "Краснодар",
-    "Ростов-на-Дону",
-    "Астрахань",
-    "Саратов",
+    # Миллионники
+    "Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань",
+    "Нижний Новгород", "Челябинск", "Самара", "Уфа", "Ростов-на-Дону",
+    "Краснодар", "Омск", "Красноярск", "Воронеж", "Пермь",
+    # 500k+
+    "Волгоград", "Саратов", "Тюмень", "Тольятти", "Ижевск",
+    "Барнаул", "Ульяновск", "Иркутск", "Хабаровск", "Ярославль",
+    "Владивосток", "Махачкала", "Томск", "Оренбург", "Кемерово",
+    # 300k+
+    "Астрахань", "Рязань", "Пенза", "Липецк", "Тула",
+    "Киров", "Чебоксары", "Калининград", "Брянск", "Курск",
+    "Иваново", "Магнитогорск", "Тверь", "Белгород", "Сочи",
+    "Нижний Тагил", "Архангельск", "Владимир", "Чита", "Сургут",
+    "Ставрополь", "Улан-Удэ", "Мурманск", "Смоленск", "Кострома",
+    "Новокузнецк", "Вологда", "Таганрог", "Калуга", "Нальчик",
 ]
 
 
@@ -164,104 +192,77 @@ def run_scanner(
     request: Request,
     city: str = Form(...),
     niche: str = Form(...),
-    source: str = Form("osm"),
-    limit: int = Form(50),
-    min_confidence: str = Form("medium"),
+    source: str = Form("yandex"),
+    limit: int = Form(30),
     require_contact: str = Form("on"),
-    exclude_chains: str = Form("on"),
 ) -> HTMLResponse:
-    limit = max(1, min(int(limit), 200))
+    from dataclasses import asdict
+    limit = max(1, min(int(limit), 100))
     api_note = ""
+    all_leads = []
+    seen = set()
 
-    if source == "2gis":
-        scanned, raw_count, api_note = scan_2gis(city=city, niche=niche, limit=limit)
+    sources = source.split(",") if "," in source else [source]
 
-        if bool(require_contact):
-            filtered = [lead for lead in scanned if has_contact(lead)]
-            if not filtered:
-                api_note = (
-                    api_note
-                    or "2ГИС нашёл компании, но контакты не пришли по текущему API-ключу. "
-                       "Для импорта в очередь прозвона нужен доступ к items.contact_groups."
-                )
-        else:
-            filtered = scanned
+    for src in sources:
+        src = src.strip()
+        try:
+            if src == "yandex":
+                leads_raw, note = scan_yandex(city, niche, limit=limit)
+            elif src == "2gis":
+                from app.dgis_source import scan_2gis as _scan_2gis
+                leads_raw, raw_count, note = _scan_2gis(city=city, niche=niche, limit=limit)
+            else:
+                continue
 
-        imported = insert_scanned_leads(
-            city=city,
-            niche=niche,
-            source="2gis",
-            raw_count=raw_count,
-            leads=filtered,
-        )
+            if note:
+                api_note = note
 
-        migrate_operator_v2()
+            for lead in leads_raw:
+                try:
+                    d = asdict(lead)
+                except Exception:
+                    d = lead.__dict__ if hasattr(lead, '__dict__') else {}
+                phone = d.get("phone", "") or ""
+                name = d.get("name", "") or ""
+                key = f"{name.lower()}|{phone}"
+                if key not in seen and name:
+                    seen.add(key)
+                    all_leads.append(lead)
+        except Exception as ex:
+            api_note = str(ex)
 
-        result = {
-            "city": city,
-            "niche": niche,
-            "source": "2ГИС API",
-            "raw_count": raw_count,
-            "sales_count": len(filtered),
-            "imported": imported,
-            "top": filtered[:10],
-            "api_note": api_note,
-        }
+    # фильтр по контакту
+    if require_contact:
+        filtered = [l for l in all_leads if getattr(l, "phone", "") or getattr(l, "email", "") or getattr(l, "website", "")]
+    else:
+        filtered = all_leads
 
-        return templates.TemplateResponse(
-            "scanner.html",
-            {
-                "request": request,
-                "cities": CITIES,
-                "niches": NICHES,
-                "result": result,
-            },
-        )
-
-    city_obj = get_city(city)
-
-    query = build_overpass_query(city_obj, niche, limit=limit)
-    data = fetch_overpass(query, source=source)
-    raw_leads = parse_elements(data, city=city_obj, niche=niche, source=source)
-
-    enriched_all = [enrich_offer(score_lead(lead)) for lead in raw_leads]
-    filtered = apply_sales_filters(
-        enriched_all,
-        exclude_chains=bool(exclude_chains),
-        min_confidence=min_confidence,
-        require_contact=bool(require_contact),
-    )
-    filtered.sort(key=lambda x: x.lead_score, reverse=True)
+    filtered.sort(key=lambda x: getattr(x, "lead_score", 0), reverse=True)
 
     imported = insert_scanned_leads(
-        city=city_obj.name,
+        city=city,
         niche=niche,
-        source=source,
-        raw_count=len(raw_leads),
+        source="+".join(sources),
+        raw_count=len(all_leads),
         leads=filtered,
     )
-
     migrate_operator_v2()
 
     result = {
-        "city": city_obj.name,
+        "city": city,
         "niche": niche,
-        "source": source,
-        "raw_count": len(raw_leads),
+        "source": "+".join(sources),
+        "raw_count": len(all_leads),
         "sales_count": len(filtered),
         "imported": imported,
-        "top": filtered[:10],
+        "top": filtered[:15],
         "api_note": api_note,
     }
 
     return templates.TemplateResponse(
         "scanner.html",
-        {
-            "request": request,
-            "cities": CITIES,
-            "niches": NICHES,
-            "result": result,
-        },
+        {"request": request, "cities": CITIES, "niches": NICHES, "result": result},
     )
 
 
