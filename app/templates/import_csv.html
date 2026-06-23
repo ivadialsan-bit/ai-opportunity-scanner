@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="lead-header">
+  <div><h1>Импорт CSV</h1></div>
+  <div class="top-actions"><a class="btn" href="/leads">Очередь</a></div>
+</section>
+
+{% if imported is defined and imported > 0 %}
+<div class="alert-success">Импортировано {{ imported }} лидов из {{ filename }}. <a href="/leads">Открыть очередь →</a></div>
+{% elif error is defined %}
+<div class="alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width:500px;margin:2rem auto">
+  <h2>Загрузить CSV из парсера</h2>
+  <p style="color:#8b949e;font-size:14px;margin:.5rem 0 1.5rem">Загрузи файл из папки <code>results/</code> — лиды попадут в очередь прозвона автоматически.</p>
+  <form method="post" enctype="multipart/form-data" action="/import-csv">
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" name="file" id="file-input" accept=".csv" style="display:none" onchange="showFile(this)">
+      <div class="upload-icon">↑</div>
+      <div class="upload-text">Перетащи CSV или <button type="button" onclick="document.getElementById('file-input').click()">выбери файл</button></div>
+      <div class="upload-name" id="file-name"></div>
+    </div>
+    <button class="btn primary full" type="submit" style="margin-top:1rem">Импортировать</button>
+  </form>
+</div>
+
+<style>
+.upload-zone{border:2px dashed #30363d;border-radius:10px;padding:2.5rem;text-align:center;cursor:pointer;transition:border-color .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:#1f6feb}
+.upload-icon{font-size:32px;color:#8b949e;margin-bottom:.5rem}
+.upload-text{font-size:14px;color:#8b949e}
+.upload-text button{background:none;border:none;color:#58a6ff;cursor:pointer;font-size:14px;text-decoration:underline}
+.upload-name{margin-top:.5rem;font-size:13px;color:#3fb950;font-weight:600}
+.alert-success{background:#0f2d1f;border:1px solid #1a5c35;color:#3fb950;padding:1rem 1.25rem;border-radius:8px;margin-bottom:1.5rem}
+.alert-success a{color:#3fb950;font-weight:600}
+.alert-error{background:#3d1f1f;border:1px solid #6e2b2b;color:#f85149;padding:1rem 1.25rem;border-radius:8px;margin-bottom:1.5rem}
+</style>
+<script>
+function showFile(input) {
+  document.getElementById('file-name').textContent = input.files[0]?.name || '';
+}
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('file-input').files = e.dataTransfer.files; showFile(document.getElementById('file-input')); }
+});
+</script>
+{% endblock %}
