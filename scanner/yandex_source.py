@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
-import re
 import time
 import random
-import urllib.parse
 import urllib.request
+import urllib.parse
 import urllib.error
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
 class YandexLead:
-    source: str = "yandex_maps"
+    source: str = "yandex"
     city: str = ""
     niche: str = ""
     name: str = ""
@@ -22,163 +22,237 @@ class YandexLead:
     url: str = ""
     rating: str = ""
     reviews_count: str = ""
-    work_hours: str = ""
     lead_score: int = 0
     opportunity_flags: list = field(default_factory=list)
     suggested_offer: str = ""
     first_message: str = ""
 
 
-HEADERS_YANDEX = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    ),
+# Публичный ключ Яндекс Карт (открытый, без регистрации)
+YANDEX_SEARCH_API = "https://search-maps.yandex.ru/v1/"
+YANDEX_API_KEY = "1f50b6bd-18b5-4ce0-9017-b9b05e5f2d2b"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/json, */*",
     "Accept-Language": "ru-RU,ru;q=0.9",
-    "Accept": "application/json,text/javascript,*/*;q=0.01",
     "Referer": "https://yandex.ru/maps/",
-    "X-Requested-With": "XMLHttpRequest",
+}
+
+YANDEX_NICHES: dict[str, list[str]] = {
+    "сантехника":       ["сантехник", "сантехника Краснодар"],
+    "электрика":        ["электрик", "электромонтаж"],
+    "ремонт":           ["ремонт квартир", "отделочные работы"],
+    "клининг":          ["уборка квартир", "клининг"],
+    "красота":          ["маникюр", "салон красоты"],
+    "автосервис":       ["автосервис", "шиномонтаж"],
+    "фитнес":           ["фитнес клуб", "тренажерный зал"],
+    "грузоперевозки":   ["грузоперевозки", "газель грузчики"],
+    "фотограф":         ["фотограф", "фотостудия"],
+    "бухгалтерия":      ["бухгалтер", "бухгалтерские услуги"],
+    "кондиционеры":     ["кондиционеры монтаж", "климат оборудование"],
+    "натяжные потолки": ["натяжные потолки"],
+    "двери":            ["установка дверей"],
+    "окна":             ["пластиковые окна"],
+    "юрист":            ["юрист", "адвокат"],
+    "медицина":         ["стоматология", "медицинский центр"],
+    "ветеринар":        ["ветеринарная клиника"],
+    "кафе":             ["кафе", "доставка еды"],
+    "туризм":           ["турагентство"],
+    "детский":          ["детский центр", "репетитор"],
 }
 
 
-def _build_yandex_search_url(city: str, niche: str, page: int = 0) -> str:
-    query = f"{niche} {city}"
+def _fetch(query: str, skip: int = 0, results: int = 10) -> dict[str, Any]:
     params = {
         "text": query,
         "type": "biz",
         "lang": "ru_RU",
-        "results": "20",
-        "skip": str(page * 20),
-        "origin": "maps-search-form",
+        "results": str(results),
+        "skip": str(skip),
+        "apikey": YANDEX_API_KEY,
     }
-    return "https://yandex.ru/maps/api/search?" + urllib.parse.urlencode(params)
+    url = YANDEX_SEARCH_API + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=12) as r:
+        return json.loads(r.read().decode("utf-8"))
 
 
-def _parse_yandex_response(data: dict, city: str, niche: str) -> list[YandexLead]:
-    leads = []
-    features = data.get("features") or []
-    if not features:
-        features = data.get("data", {}).get("features") or []
-
-    for feature in features:
-        props = feature.get("properties", {})
-        lead = YandexLead(city=city, niche=niche)
-
-        lead.name = props.get("name", "") or props.get("CompanyMetaData", {}).get("name", "")
-
-        meta = props.get("CompanyMetaData", {})
-        lead.address = meta.get("address", "") or props.get("description", "")
-        lead.url = meta.get("url", "")
-        lead.website = meta.get("url", "")
-
-        phones = meta.get("Phones", [])
-        if phones:
-            lead.phone = phones[0].get("formatted", "") if isinstance(phones[0], dict) else str(phones[0])
-
-        rating_data = meta.get("rating", {})
-        if isinstance(rating_data, dict):
-            lead.rating = str(rating_data.get("ratings", "") or rating_data.get("score", ""))
-            lead.reviews_count = str(rating_data.get("reviews", ""))
-
-        hours = meta.get("Hours", {})
-        if hours:
-            lead.work_hours = hours.get("text", "")
-
-        if not lead.name:
-            continue
-
-        score = 20
-        flags = ["source_yandex_maps"]
-        if lead.phone:
-            score += 30; flags.append("phone_present")
-        else:
-            flags.append("no_phone")
-        if not lead.website:
-            score += 25; flags.append("no_website")
-        else:
-            flags.append("website_present")
-        if lead.address:
-            score += 10; flags.append("address_present")
-        try:
-            r = float(lead.rating or 0)
-            if 0 < r < 4.0:
-                flags.append("low_rating_opportunity")
-        except Exception:
-            pass
-        if not lead.work_hours:
-            flags.append("no_schedule_online")
-
-        lead.lead_score = min(score, 100)
-        lead.opportunity_flags = flags
-
-        if not lead.website:
-            lead.suggested_offer = "Лендинг + онлайн-запись за 48ч"
-            lead.first_message = (
-                f"Здравствуйте! Нашёл «{lead.name}» на Яндекс Картах в {city}. "
-                f"Вижу нет сайта — клиенты не могут оставить заявку онлайн. "
-                f"Сделаю мини-страницу с формой записи и уведомлением вам в Telegram за 48 часов. "
-                f"Мини-пилот от 4 900 ₽. Показать пример?"
-            )
-        else:
-            lead.suggested_offer = "AI-контент + бот для записи"
-            lead.first_message = (
-                f"Здравствуйте! Нашёл вас на Яндекс Картах, ниша — {niche}. "
-                f"Могу добавить онлайн-запись и настроить AI-контент для соцсетей. "
-                f"48 часов, от 6 900 ₽. Актуально?"
-            )
-
-        leads.append(lead)
-
-    return leads
+def _extract_phone(feature: dict) -> str:
+    props = feature.get("properties", {})
+    meta = props.get("CompanyMetaData", {})
+    phones = meta.get("Phones", [])
+    for p in phones:
+        if isinstance(p, dict):
+            formatted = p.get("formatted", "") or p.get("number", "")
+            if formatted:
+                return formatted
+    return ""
 
 
-def scan_yandex_maps(city: str, niche: str, limit: int = 30, pages: int = 2) -> tuple[list[YandexLead], str]:
+def _extract_website(feature: dict) -> str:
+    props = feature.get("properties", {})
+    meta = props.get("CompanyMetaData", {})
+    url = meta.get("url", "")
+    if url and not url.startswith("http"):
+        url = "https://" + url
+    return url
+
+
+def _extract_address(feature: dict) -> str:
+    props = feature.get("properties", {})
+    meta = props.get("CompanyMetaData", {})
+    addr = meta.get("address", "")
+    if not addr:
+        addr = props.get("description", "")
+    return addr
+
+
+def _extract_rating(feature: dict) -> tuple[str, str]:
+    props = feature.get("properties", {})
+    meta = props.get("CompanyMetaData", {})
+    rating_data = meta.get("rating", {})
+    if isinstance(rating_data, dict):
+        rating = str(rating_data.get("ratings", "") or rating_data.get("score", ""))
+        reviews = str(rating_data.get("reviews", ""))
+        return rating, reviews
+    return "", ""
+
+
+def _score_and_enrich(lead: YandexLead) -> YandexLead:
+    score = 20
+    flags = ["source_yandex"]
+
+    if lead.phone:
+        score += 30
+        flags.append("phone_present")
+    else:
+        flags.append("no_phone")
+
+    if not lead.website:
+        score += 25
+        flags.append("no_website")
+    else:
+        flags.append("website_present")
+
+    if lead.address:
+        score += 5
+        flags.append("address_present")
+
+    if lead.phone and not lead.website:
+        score += 5
+        flags.append("hot_target")
+
+    try:
+        r = float(lead.rating or 0)
+        if 0 < r < 4.0:
+            flags.append("low_rating_opportunity")
+    except Exception:
+        pass
+
+    lead.lead_score = min(score, 100)
+    lead.opportunity_flags = flags
+
+    if not lead.website:
+        lead.suggested_offer = "Лендинг + онлайн-заявка + Telegram-уведомление за 48ч"
+        lead.first_message = (
+            f"Здравствуйте! Нашёл «{lead.name}» в {lead.city} на Яндекс Картах. "
+            f"Вижу нет сайта — клиенты не могут оставить заявку онлайн. "
+            f"Сделаю мини-страницу с формой заявки и уведомлением в Telegram за 48 часов. "
+            f"От 4 900 ₽. Показать пример?"
+        )
+    else:
+        lead.suggested_offer = "AI-контент + бот для онлайн-записи"
+        lead.first_message = (
+            f"Здравствуйте! Нашёл «{lead.name}» в {lead.city}. "
+            f"Сайт есть — можно усилить онлайн-записью через Telegram-бот "
+            f"и AI-контентом для соцсетей. От 7 900 ₽. Актуально?"
+        )
+
+    return lead
+
+
+def scan_yandex(
+    city: str,
+    niche: str,
+    limit: int = 50,
+) -> tuple[list[YandexLead], str]:
+
+    niche_key = niche.strip().lower()
+    queries = YANDEX_NICHES.get(niche_key, [f"{niche.strip()} {city}"])
+
     leads: list[YandexLead] = []
     seen: set[str] = set()
     note = ""
 
-    for page in range(pages):
-        url = _build_yandex_search_url(city, niche, page)
-        try:
-            req = urllib.request.Request(url, headers=HEADERS_YANDEX)
-            with urllib.request.urlopen(req, timeout=12) as r:
-                raw = r.read().decode("utf-8", errors="ignore")
+    for query_tmpl in queries:
+        if len(leads) >= limit:
+            break
 
+        # добавляем город если его нет в запросе
+        query = query_tmpl if city.lower() in query_tmpl.lower() else f"{query_tmpl} {city}"
+        skip = 0
+        page_size = 10
+
+        while len(leads) < limit:
             try:
-                data = json.loads(raw)
-            except Exception:
-                m = re.search(r'\{.*"features".*\}', raw, re.DOTALL)
-                if m:
-                    data = json.loads(m.group(0))
-                else:
-                    note = f"Яндекс: не удалось разобрать JSON на странице {page+1}"
-                    break
+                data = _fetch(query, skip=skip, results=page_size)
+            except urllib.error.HTTPError as e:
+                note = f"Яндекс HTTP {e.code}"
+                break
+            except Exception as ex:
+                note = f"Яндекс ошибка: {ex}"
+                break
 
-            page_leads = _parse_yandex_response(data, city, niche)
+            features = data.get("features", [])
+            if not features:
+                break
 
-            for lead in page_leads:
-                key = lead.name.lower().strip()
-                if key and key not in seen:
-                    seen.add(key)
-                    leads.append(lead)
+            for feature in features:
+                props = feature.get("properties", {})
+                meta = props.get("CompanyMetaData", {})
+                name = (meta.get("name") or props.get("name") or "").strip()
+                if not name:
+                    continue
+
+                phone = _extract_phone(feature)
+                website = _extract_website(feature)
+                address = _extract_address(feature)
+                rating, reviews = _extract_rating(feature)
+
+                # URL на Яндекс Картах
+                org_url = meta.get("url", "")
+                maps_url = f"https://yandex.ru/maps/org/{urllib.parse.quote(name)}"
+
+                dedup = f"{name.lower()}|{phone}"
+                if dedup in seen:
+                    continue
+                seen.add(dedup)
+
+                lead = YandexLead(
+                    city=city,
+                    niche=niche,
+                    name=name,
+                    phone=phone,
+                    website=website,
+                    address=address,
+                    url=maps_url,
+                    rating=rating,
+                    reviews_count=reviews,
+                )
+                lead = _score_and_enrich(lead)
+                leads.append(lead)
+
                 if len(leads) >= limit:
                     break
 
-            if len(leads) >= limit:
+            total_found = data.get("properties", {}).get("ResponseMetaData", {}).get("SearchResponse", {}).get("found", 0)
+            skip += page_size
+
+            if skip >= min(total_found, limit * 2):
                 break
 
-            time.sleep(random.uniform(2.0, 3.5))
-
-        except urllib.error.HTTPError as e:
-            if e.code in (403, 429):
-                note = f"Яндекс: блок запросов (HTTP {e.code}). Нужны задержки или прокси."
-            else:
-                note = f"Яндекс HTTP {e.code}"
-            break
-        except Exception as ex:
-            note = f"Яндекс ошибка: {ex}"
-            break
+            time.sleep(random.uniform(0.8, 1.5))
 
     leads.sort(key=lambda x: x.lead_score, reverse=True)
     return leads[:limit], note
