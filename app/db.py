@@ -192,7 +192,25 @@ def get_dashboard_stats() -> dict[str, int]:
         paid = conn.execute(
             "SELECT COUNT(*) FROM leads WHERE status IN ('paid','Оплачено')"
         ).fetchone()[0]
-    return {"total": total, "new": new, "interested": interested, "paid": paid}
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        contacted_today = conn.execute(
+            "SELECT COUNT(DISTINCT lead_id) FROM lead_events WHERE created_at >= ?", (today,)
+        ).fetchone()[0]
+        talked_today = conn.execute(
+            """SELECT COUNT(DISTINCT lead_id) FROM lead_events
+               WHERE created_at >= ? AND note LIKE '%status=Интерес%'
+               OR note LIKE '%status=КП%' OR note LIKE '%status=Оплач%'""", (today,)
+        ).fetchone()[0]
+        kp_today = conn.execute(
+            """SELECT COUNT(DISTINCT lead_id) FROM lead_events
+               WHERE created_at >= ? AND note LIKE '%status=КП отправлено%'""", (today,)
+        ).fetchone()[0]
+    return {
+        "total": total, "new": new, "interested": interested, "paid": paid,
+        "contacted_today": contacted_today,
+        "talked_today": talked_today,
+        "kp_today": kp_today,
+    }
 
 
 def list_leads(
