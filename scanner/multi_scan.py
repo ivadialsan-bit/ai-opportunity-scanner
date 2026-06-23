@@ -64,12 +64,9 @@ def run_multi_scan(
                 if source == "2gis":
                     from scanner.dgis_source import scan_2gis
                     leads_raw, note = scan_2gis(city, niche, limit=limit_per_source, key=dgis_key)
-                elif source == "avito":
-                    from scanner.avito_source import scan_avito
-                    leads_raw, note = scan_avito(city, niche, limit=limit_per_source)
-                elif source == "zoon":
-                    from scanner.zoon_source import scan_zoon
-                    leads_raw, note = scan_zoon(city, niche, limit=limit_per_source)
+                elif source == "yandex":
+                    from scanner.yandex_source import scan_yandex
+                    leads_raw, note = scan_yandex(city, niche, limit=limit_per_source)
                 else:
                     print(f"  Неизвестный источник: {source}")
                     continue
@@ -133,3 +130,8 @@ def run_multi_scan(
             print(f"  {l.get('lead_score')} | {l.get('name')} | {l.get('phone')} | {l.get('address','')[:40]}")
 
     return outpath
+
+
+def _load_yandex():
+    from scanner.yandex_source import scan_yandex
+    return scan_yandex
