@@ -3,7 +3,8 @@ from __future__ import annotations
 import csv
 import glob
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,20 @@ DB_PATH = Path("app/data/cockpit.sqlite3")
 
 def now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def now_msk() -> str:
+    return datetime.now(ZoneInfo("Europe/Moscow")).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S МСК")
+
+
+def utc_to_msk(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.astimezone(ZoneInfo("Europe/Moscow")).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S МСК")
+    except Exception:
+        return ""
 
 
 def connect() -> sqlite3.Connection:
@@ -162,16 +177,43 @@ def get_dashboard_stats() -> dict[str, int]:
     init_db()
     with connect() as conn:
         total = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
-        new = conn.execute("SELECT COUNT(*) FROM leads WHERE status='new'").fetchone()[0]
-        interested = conn.execute("SELECT COUNT(*) FROM leads WHERE status IN ('interested','example_requested','offer_sent','follow_up')").fetchone()[0]
-        paid = conn.execute("SELECT COUNT(*) FROM leads WHERE status='paid'").fetchone()[0]
+        new = conn.execute(
+            "SELECT COUNT(*) FROM leads WHERE status IN ('new','Новый')"
+        ).fetchone()[0]
+        interested = conn.execute(
+            """
+            SELECT COUNT(*) FROM leads
+            WHERE status IN (
+                'interested','example_requested','offer_sent','follow_up',
+                'Интерес','Просит пример','КП отправлено','Повторный контакт'
+            )
+            """
+        ).fetchone()[0]
+        paid = conn.execute(
+            "SELECT COUNT(*) FROM leads WHERE status IN ('paid','Оплачено')"
+        ).fetchone()[0]
     return {"total": total, "new": new, "interested": interested, "paid": paid}
 
 
-def list_leads(status: str = "", q: str = "", city: str = "") -> list[dict[str, Any]]:
+def list_leads(
+    status: str = "",
+    q: str = "",
+    city: str = "",
+    lead_source: str = "",
+    contact_filter: str = "",
+) -> list[dict[str, Any]]:
     init_db()
+
     where = []
     params: dict[str, Any] = {}
+
+    contact_expr = """
+    (
+        TRIM(COALESCE(phone,'')) != ''
+        OR TRIM(COALESCE(email,'')) != ''
+        OR TRIM(COALESCE(website,'')) != ''
+    )
+    """
 
     if status:
         where.append("status = :status")
@@ -181,14 +223,43 @@ def list_leads(status: str = "", q: str = "", city: str = "") -> list[dict[str, 
         where.append("city = :city")
         params["city"] = city
 
+    if lead_source:
+        if lead_source == "osm":
+            where.append("source IN ('osm','overpass')")
+        else:
+            where.append("source = :lead_source")
+            params["lead_source"] = lead_source
+
+    if contact_filter == "with_contact":
+        where.append(contact_expr)
+    elif contact_filter == "without_contact":
+        where.append(f"NOT {contact_expr}")
+    elif contact_filter == "needs_check":
+        where.append("status = 'Нужна проверка контакта'")
+
     if q:
-        where.append("(name LIKE :q OR phone LIKE :q OR email LIKE :q OR website LIKE :q OR priority_reason LIKE :q)")
+        where.append("(name LIKE :q OR phone LIKE :q OR email LIKE :q OR website LIKE :q OR priority_reason LIKE :q OR recommended_product LIKE :q)")
         params["q"] = f"%{q}%"
 
     sql = "SELECT * FROM leads"
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY sales_priority DESC, lead_score DESC, id DESC LIMIT 500"
+
+    sql += """
+    ORDER BY
+      CASE
+        WHEN status='Новый' THEN 0
+        WHEN status='Интерес' THEN 1
+        WHEN status='Просит пример' THEN 2
+        WHEN status='КП отправлено' THEN 3
+        WHEN status='Нужна проверка контакта' THEN 9
+        ELSE 5
+      END,
+      sales_priority DESC,
+      lead_score DESC,
+      id DESC
+    LIMIT 500
+    """
 
     with connect() as conn:
         return [dict(r) for r in conn.execute(sql, params).fetchall()]
@@ -227,6 +298,8 @@ def update_lead(lead_id: int, fields: dict[str, Any], event_note: str = "") -> N
 
     clean = {k: v for k, v in fields.items() if k in allowed}
     clean["updated_at"] = now_iso()
+    clean["updated_at_msk"] = now_msk()
+    clean["last_contact_at_msk"] = now_msk()
 
     set_clause = ", ".join([f"{k}=:{k}" for k in clean])
     clean["id"] = lead_id
@@ -311,3 +384,181 @@ def insert_scanned_leads(city: str, niche: str, source: str, raw_count: int, lea
                 continue
 
         return imported
+
+
+def get_next_lead_id(status: str = "Новый") -> int | None:
+    init_db()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT id FROM leads
+            WHERE status IN (?, 'new', 'Новый')
+              AND (
+                TRIM(COALESCE(phone,'')) != ''
+                OR TRIM(COALESCE(email,'')) != ''
+                OR TRIM(COALESCE(website,'')) != ''
+              )
+            ORDER BY sales_priority DESC, lead_score DESC, id ASC
+            LIMIT 1
+            """,
+            (status,),
+        ).fetchone()
+
+        if row:
+            return int(row[0])
+
+        row = conn.execute(
+            """
+            SELECT id FROM leads
+            WHERE (
+                TRIM(COALESCE(phone,'')) != ''
+                OR TRIM(COALESCE(email,'')) != ''
+                OR TRIM(COALESCE(website,'')) != ''
+              )
+            ORDER BY sales_priority DESC, lead_score DESC, id ASC
+            LIMIT 1
+            """
+        ).fetchone()
+
+        return int(row[0]) if row else None
+
+
+
+def _ensure_leads_column(conn: sqlite3.Connection, column_sql: str) -> None:
+    column_name = column_sql.split()[0]
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)").fetchall()}
+    if column_name not in existing:
+        conn.execute(f"ALTER TABLE leads ADD COLUMN {column_sql}")
+
+
+def _status_ru(value: str) -> str:
+    mapping = {
+        "new": "Новый",
+        "called": "Позвонил",
+        "no_answer": "Не ответили",
+        "wrong_contact": "Неверный контакт",
+        "decision_maker_found": "ЛПР найден",
+        "interested": "Интерес",
+        "example_requested": "Просит пример",
+        "offer_sent": "КП отправлено",
+        "follow_up": "Повторный контакт",
+        "paid": "Оплачено",
+        "rejected": "Отказ",
+    }
+    return mapping.get(value, value or "Новый")
+
+
+def _next_action_ru(value: str) -> str:
+    mapping = {
+        "call_or_manual_message": "Позвонить / если не ответили — ручное сообщение",
+        "call": "Позвонить",
+        "manual_message": "Отправить ручное сообщение",
+        "follow_up": "Повторить контакт",
+    }
+    return mapping.get(value, value or "Позвонить / если не ответили — ручное сообщение")
+
+
+def _recommend_product(flags: str, website: str, phone: str, email: str) -> tuple[str, str, str]:
+    f = (flags or "").lower()
+    site = (website or "").strip()
+    has_phone = bool((phone or "").strip())
+    has_email = bool((email or "").strip())
+
+    if "no_website" in f or not site:
+        if has_phone and has_email:
+            return (
+                "Цифровая точка заявки за 48 часов",
+                "9 900 ₽",
+                "Нет сайта/страницы заявки, но есть телефон и email. Быстрее всего продать мини-страницу, кнопки связи, FAQ и учёт заявок.",
+            )
+        return (
+            "Мини-точка заявки за 48 часов",
+            "5 900 ₽",
+            "Нет сайта/страницы заявки. Нужен минимальный пилот: страница, кнопка связи, 5 FAQ и первый скрипт ответа.",
+        )
+
+    if "website_present" in f or site:
+        return (
+            "AI Sales Patch для существующего сайта",
+            "14 900 ₽",
+            "Сайт есть. Продавать не сайт с нуля, а усиление заявки: CTA, FAQ, тексты услуг, скрипт переписки и таблицу учёта.",
+        )
+
+    return (
+        "Диагностика цифровой точки заявки",
+        "5 900 ₽",
+        "Данных мало. Начинать с ручной диагностики карточки/сайта и короткого мини-пилота.",
+    )
+
+
+def migrate_operator_v2() -> None:
+    init_db()
+    with connect() as conn:
+        _ensure_leads_column(conn, "created_at_msk TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "updated_at_msk TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "last_contact_at_msk TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "recommended_product TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "recommended_price TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "recommended_reason TEXT NOT NULL DEFAULT ''")
+        _ensure_leads_column(conn, "source_label TEXT NOT NULL DEFAULT ''")
+
+        rows = conn.execute(
+            """
+            SELECT id, created_at, updated_at, status, next_action,
+                   opportunity_flags, website, phone, email, source
+            FROM leads
+            """
+        ).fetchall()
+
+        for r in rows:
+            product, price, reason = _recommend_product(
+                r["opportunity_flags"],
+                r["website"],
+                r["phone"],
+                r["email"],
+            )
+
+            source = (r["source"] or "").lower()
+            if source in ("osm", "overpass"):
+                source_label = "OpenStreetMap / Overpass fallback"
+            elif source == "2gis":
+                source_label = "2ГИС API"
+            elif source == "yandex":
+                source_label = "Яндекс Карты API"
+            else:
+                source_label = r["source"] or "не указан"
+
+            conn.execute(
+                """
+                UPDATE leads
+                SET
+                  status=?,
+                  next_action=?,
+                  created_at_msk=CASE WHEN created_at_msk='' THEN ? ELSE created_at_msk END,
+                  updated_at_msk=CASE WHEN updated_at_msk='' THEN ? ELSE updated_at_msk END,
+                  recommended_product=?,
+                  recommended_price=?,
+                  recommended_reason=?,
+                  source_label=?
+                WHERE id=?
+                """,
+                (
+                    _status_ru(r["status"]),
+                    _next_action_ru(r["next_action"]),
+                    utc_to_msk(r["created_at"]) or now_msk(),
+                    utc_to_msk(r["updated_at"]) or now_msk(),
+                    product,
+                    price,
+                    reason,
+                    source_label,
+                    r["id"],
+                ),
+            )
+
+
+def has_contact(lead: object) -> bool:
+    return bool(
+        str(getattr(lead, "phone", "") or "").strip()
+        or str(getattr(lead, "email", "") or "").strip()
+        or str(getattr(lead, "website", "") or "").strip()
+    )

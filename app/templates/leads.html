@@ -1,66 +1,91 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="page-head">
+<section class="topline sticky-head">
   <div>
-    <p class="eyebrow">Lead Queue</p>
+    <div class="eyebrow">Очередь лидов</div>
     <h1>Очередь прозвона</h1>
-    <p class="sub">Фильтруй, звони, фиксируй статус. Не копи базу ради базы.</p>
   </div>
-  <form action="/import-shortlist" method="post">
-    <button class="btn" type="submit">Импортировать последний shortlist</button>
-  </form>
+
+  <div class="top-actions">
+    <a class="btn primary" href="/next-lead">Следующий лид</a>
+    <a class="btn" href="/leads?contact_filter=with_contact">Только с контактами</a>
+    <a class="btn" href="/leads?status=Нужна%20проверка%20контакта">Карантин</a>
+  </div>
 </section>
 
-<section class="card">
+<section class="card filter-card">
   <form method="get" action="/leads" class="filters">
-    <input name="q" value="{{ q }}" placeholder="поиск по названию / телефону / email">
+    <input name="q" value="{{ q }}" placeholder="поиск: компания / телефон / почта / сайт">
+
     <select name="status">
       <option value="">Все статусы</option>
       {% for s in statuses %}
       <option value="{{ s }}" {% if s == selected_status %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
     </select>
+
     <select name="city">
       <option value="">Все города</option>
       {% for c in cities %}
       <option value="{{ c }}" {% if c == selected_city %}selected{% endif %}>{{ c }}</option>
       {% endfor %}
     </select>
+
+    <select name="lead_source">
+      <option value="">Все источники</option>
+      <option value="osm" {% if selected_source == "osm" %}selected{% endif %}>OSM / Overpass</option>
+      <option value="2gis" {% if selected_source == "2gis" %}selected{% endif %}>2ГИС</option>
+    </select>
+
+    <select name="contact_filter">
+      <option value="">Все контакты</option>
+      <option value="with_contact" {% if selected_contact_filter == "with_contact" %}selected{% endif %}>Есть контакт</option>
+      <option value="without_contact" {% if selected_contact_filter == "without_contact" %}selected{% endif %}>Нет контакта</option>
+      <option value="needs_check" {% if selected_contact_filter == "needs_check" %}selected{% endif %}>Нужна проверка</option>
+    </select>
+
     <button class="btn primary" type="submit">Фильтр</button>
   </form>
 </section>
 
 <section class="card">
   <div class="row-between">
-    <h2>Лиды: {{ leads|length }}</h2>
-    <div class="muted">Demo: {{ demo_url }}</div>
+    <h2>{{ leads|length }} лидов</h2>
+    <span class="muted">Клик по компании = рабочая карточка звонка</span>
   </div>
 
-  <table>
+  <table class="dense lead-table">
     <thead>
       <tr>
-        <th>Priority</th>
+        <th>Приор.</th>
         <th>Компания</th>
         <th>Город</th>
-        <th>Контакт</th>
-        <th>Дыра</th>
+        <th>Телефон</th>
+        <th>Почта / сайт</th>
+        <th>Продукт</th>
+        <th>Источник</th>
         <th>Статус</th>
       </tr>
     </thead>
+
     <tbody>
       {% for lead in leads %}
       <tr>
-        <td><strong>{{ lead.sales_priority }}</strong></td>
+        <td><b>{{ lead.sales_priority }}</b></td>
         <td>
-          <a href="/leads/{{ lead.id }}"><strong>{{ lead.name }}</strong></a>
-          <div class="muted smalltext">{{ lead.priority_reason }}</div>
+          <a class="lead-link" href="/leads/{{ lead.id }}">{{ lead.name }}</a>
+          {% if not lead.phone and not lead.email and not lead.website %}
+          <div class="warn-text">нет контакта</div>
+          {% endif %}
         </td>
         <td>{{ lead.city }}</td>
-        <td>
-          <div>{{ lead.phone or "-" }}</div>
-          <div class="muted smalltext">{{ lead.email or lead.website or "" }}</div>
+        <td>{{ lead.phone or "-" }}</td>
+        <td class="smalltext">{{ lead.email or lead.website or "-" }}</td>
+        <td class="smalltext reason">
+          <b>{{ lead.recommended_product or "-" }}</b><br>
+          {{ lead.recommended_price or "" }}
         </td>
-        <td>{{ lead.target_confidence or "-" }}</td>
+        <td class="smalltext">{{ lead.source_label or lead.source or "-" }}</td>
         <td><span class="pill">{{ lead.status }}</span></td>
       </tr>
       {% endfor %}
