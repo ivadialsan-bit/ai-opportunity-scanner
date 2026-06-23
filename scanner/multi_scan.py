@@ -67,6 +67,13 @@ def run_multi_scan(
                 elif source == "yandex":
                     from scanner.yandex_source import scan_yandex
                     leads_raw, note = scan_yandex(city, niche, limit=limit_per_source)
+                elif source == "hh":
+                    from scanner.hh_source import scan_hh
+                    leads_raw, note = scan_hh(city, limit=limit_per_source)
+                elif source == "vk":
+                    from scanner.vk_source import scan_vk
+                    import os
+                    leads_raw, note = scan_vk(city, niche, limit=limit_per_source, access_token=os.getenv("VK_TOKEN",""))
                 else:
                     print(f"  Неизвестный источник: {source}")
                     continue
