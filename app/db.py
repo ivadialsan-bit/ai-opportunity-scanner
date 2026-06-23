@@ -286,7 +286,26 @@ def list_leads(
 def get_lead(lead_id: int) -> dict[str, Any] | None:
     init_db()
     with connect() as conn:
-        return row_to_dict(conn.execute("SELECT * FROM leads WHERE id=?", (lead_id,)).fetchone())
+        lead = row_to_dict(conn.execute("SELECT * FROM leads WHERE id=?", (lead_id,)).fetchone())
+    if not lead:
+        return None
+    try:
+        from app.scripts import generate_scripts
+        scripts = generate_scripts(
+            name=lead.get("name", ""),
+            niche=lead.get("niche", ""),
+            city=lead.get("city", ""),
+            website=lead.get("website", ""),
+            phone=lead.get("phone", ""),
+            email=lead.get("email", ""),
+            flags=lead.get("opportunity_flags", ""),
+            product=lead.get("recommended_product", ""),
+            price=lead.get("recommended_price", ""),
+        )
+        lead.update(scripts)
+    except Exception:
+        pass
+    return lead
 
 
 def get_events(lead_id: int) -> list[dict[str, Any]]:
