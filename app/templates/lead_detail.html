@@ -153,6 +153,49 @@
   </div>
 </section>
 
+<section class="qualify-section">
+  <div class="qualify-header">
+    <h2>Что продавать этому клиенту</h2>
+    <button class="btn small" onclick="toggleQualify()">Квалификация</button>
+  </div>
+
+  {% if lead.qualify_recs %}
+  <div class="qualify-recs">
+    {% for rec in lead.qualify_recs %}
+    <div class="qrec {% if loop.first %}qrec-top{% endif %}">
+      <div class="qrec-left">
+        {% if loop.first %}<div class="qrec-badge">Рекомендую</div>{% endif %}
+        <div class="qrec-name">{{ rec.product.name }}</div>
+        <div class="qrec-reason">{{ rec.reason }}</div>
+        <div class="qrec-what">{{ rec.product.desc }}</div>
+      </div>
+      <div class="qrec-right">
+        <div class="qrec-price">{{ rec.product.price_full }}</div>
+        <div class="qrec-delivery">{{ rec.product.delivery }}</div>
+        <div class="qrec-test">Тест: {{ rec.product.price_test }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="qualify-form" id="qualify-form" style="display:none">
+    <div class="qualify-title">Квалификационные вопросы — отвечай в разговоре</div>
+    {% if lead.qualify_questions %}
+    {% for q in lead.qualify_questions %}
+    <div class="q-block">
+      <div class="q-text">{{ loop.index }}. {{ q.text }}</div>
+      <div class="q-opts">
+        {% for opt in q.options %}
+        <button class="q-opt" onclick="selectOpt(this)">{{ opt }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</section>
+
 <section class="scripts-mega">
   <div class="scripts-nav">
     <button class="snav active" onclick="showScriptPanel(this,'sp-call')">Звонок</button>
@@ -286,6 +329,14 @@ function copyPanel(panelId) {
     const btn = panel.querySelector('.btn.small');
     if (btn) { const o = btn.innerText; btn.innerText = 'Скопировано!'; setTimeout(() => btn.innerText = o, 1500); }
   });
+}
+function toggleQualify() {
+  const f = document.getElementById('qualify-form');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+function selectOpt(btn) {
+  btn.closest('.q-opts').querySelectorAll('.q-opt').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
 }
 </script>
 {% endblock %}
