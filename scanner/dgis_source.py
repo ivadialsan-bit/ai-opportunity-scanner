@@ -207,7 +207,7 @@ def scan_2gis(
 
         full_query = f"{query} {city}"
         page = 1
-        page_size = min(20, limit)
+        page_size = min(10, limit)
 
         while len(leads) < limit:
             try:
