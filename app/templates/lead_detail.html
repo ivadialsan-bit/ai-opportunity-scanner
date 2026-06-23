@@ -1,14 +1,36 @@
 {% extends "layout.html" %}
 {% block content %}
+
+{# ── прогресс дня ── #}
+<section class="day-progress">
+  <div class="dp-label">Цель дня</div>
+  <div class="dp-bars">
+    <div class="dp-item">
+      <div class="dp-name">Контактов</div>
+      <div class="dp-track"><div class="dp-fill" style="width:{{ [((stats.contacted_today or 0) / 10 * 100)|int, 100]|min }}%"></div></div>
+      <div class="dp-val">{{ stats.contacted_today or 0 }}/10</div>
+    </div>
+    <div class="dp-item">
+      <div class="dp-name">Разговоров</div>
+      <div class="dp-track"><div class="dp-fill dp-fill-2" style="width:{{ [((stats.talked_today or 0) / 3 * 100)|int, 100]|min }}%"></div></div>
+      <div class="dp-val">{{ stats.talked_today or 0 }}/3</div>
+    </div>
+    <div class="dp-item">
+      <div class="dp-name">КП ушло</div>
+      <div class="dp-track"><div class="dp-fill dp-fill-3" style="width:{{ [((stats.kp_today or 0) / 1 * 100)|int, 100]|min }}%"></div></div>
+      <div class="dp-val">{{ stats.kp_today or 0 }}/1</div>
+    </div>
+  </div>
+</section>
+
 <section class="lead-header">
   <div>
     <div class="eyebrow">Лид #{{ lead.id }} · {{ lead.city }} · приоритет {{ lead.sales_приоритет }}</div>
     <h1>{{ lead.name }}</h1>
   </div>
-
   <div class="top-actions">
     <a class="btn" href="/leads">Очередь</a>
-    <a class="btn primary" href="/next-lead">Следующий лид</a>
+    <a class="btn primary" href="/next-lead">Следующий лид →</a>
   </div>
 </section>
 
@@ -16,104 +38,116 @@
   <div class="card contact-card">
     <div class="row-between">
       <h2>Контакт</h2>
-      <span class="pill">{{ lead.status }}</span>
+      {% if lead.sales_приоритет and lead.sales_приоритет|int > 150 %}
+        <span class="pill hot">ГОРЯЧИЙ</span>
+      {% else %}
+        <span class="pill">{{ lead.status }}</span>
+      {% endif %}
     </div>
+
+    {# телефон крупно + кнопки действий #}
+    {% if lead.phone %}
+    <div class="phone-block">
+      <a class="phone-big" href="tel:{{ lead.phone }}">{{ lead.phone }}</a>
+      <div class="contact-btns">
+        <a class="btn primary" href="tel:{{ lead.phone }}">Позвонить</a>
+        {% if lead.phone %}
+        <a class="btn wa" href="https://wa.me/{{ lead.phone | replace('+','') | replace(' ','') | replace('-','') | replace('(','') | replace(')','') }}?text={{ lead.first_message | urlencode }}" target="_blank">WhatsApp</a>
+        {% endif %}
+        {% if lead.email %}
+        <a class="btn" href="mailto:{{ lead.email }}?subject=Цифровая точка заявки за 48 часов&body={{ lead.first_message | urlencode }}">Email</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
 
     <div class="contact-lines">
-      <div><span>Телефон</span><b>{{ lead.phone or "-" }}</b></div>
-      <div><span>Почта</span><b>{{ lead.email or "-" }}</b></div>
-      <div>
-        <span>Сайт</span>
-        <b>
-          {% if lead.website %}
-            <a href="{{ lead.website }}" target="_blank">{{ lead.website }}</a>
-          {% else %}
-            -
-          {% endif %}
-        </b>
-      </div>
-      <div><span>Адрес</span><b>{{ lead.address or "-" }}</b></div>
-    </div>
-
-    <div class="gap-box">
-      <span>Почему выбран</span>
-      <p>{{ lead.приоритет_reason or lead.opportunity_flags }}</p>
+      {% if not lead.phone %}<div><span>Телефон</span><b>—</b></div>{% endif %}
+      <div><span>Почта</span><b>{{ lead.email or "—" }}</b></div>
+      <div><span>Сайт</span><b>{% if lead.website %}<a href="{{ lead.website }}" target="_blank">{{ lead.website }}</a>{% else %}—{% endif %}</b></div>
+      <div><span>Адрес</span><b>{{ lead.address or "—" }}</b></div>
     </div>
 
     <div class="product-box">
       <span>Рекомендованный продукт</span>
       <h3>{{ lead.recommended_product or "Цифровая точка заявки за 48 часов" }}</h3>
-      <p><b>{{ lead.recommended_price or "9 900 ₽" }}</b> · {{ lead.recommended_reason or "Быстрый продукт для проверки спроса." }}</p>
+      <p><b>{{ lead.recommended_price or "9 900 ₽" }}</b> · {{ lead.recommended_reason or "Нет сайта — быстрая продажа." }}</p>
     </div>
 
     <div class="time-box">
-      <div><span>Создано</span><b>{{ lead.created_at_msk or "-" }}</b></div>
-      <div><span>Обновлено</span><b>{{ lead.updated_at_msk or "-" }}</b></div>
+      <div><span>Создано</span><b>{{ lead.created_at_msk or "—" }}</b></div>
+      <div><span>Обновлено</span><b>{{ lead.updated_at_msk or "—" }}</b></div>
       <div><span>Последний контакт</span><b>{{ lead.last_contact_at_msk or "ещё не было" }}</b></div>
-      <div><span>Источник</span><b>{{ lead.source_label or lead.source or "-" }}</b></div>
+      <div><span>Источник</span><b>{{ lead.source_label or lead.source or "—" }}</b></div>
     </div>
 
     <div class="quick-actions">
-      {% if lead.website %}
-      <a class="btn" href="{{ lead.website }}" target="_blank">Открыть сайт</a>
-      {% endif %}
       <a class="btn primary" href="{{ demo_url }}" target="_blank">Демо 48ч</a>
-      <button class="btn" data-copy-target="demo-url" onclick="copyText('demo-url')">Копировать demo</button>
+      <button class="btn" onclick="copyText('demo-url')">Копировать demo</button>
     </div>
-
     <div class="copy-box one-line" id="demo-url">{{ demo_url }}</div>
   </div>
 
   <div class="card status-card">
     <h2>Статус после контакта</h2>
 
-    <form method="post" action="/leads/{{ lead.id }}/update" class="status-form">
-      <label>
-        Статус
-        <select name="status">
-          {% for s in statuses %}
-          <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </label>
+    {# 5 больших кнопок статуса #}
+    <div class="status-btns">
+      <button class="sbtn sbtn-grey{% if lead.status == 'Не ответили' %} active{% endif %}"
+        onclick="setStatus('Не ответили')">Не ответил</button>
+      <button class="sbtn sbtn-red{% if lead.status == 'Отказ' %} active{% endif %}"
+        onclick="setStatus('Отказ')">Отказ</button>
+      <button class="sbtn sbtn-yellow{% if lead.status == 'Интерес' %} active{% endif %}"
+        onclick="setStatus('Интерес')">Думает</button>
+      <button class="sbtn sbtn-blue{% if lead.status == 'КП отправлено' %} active{% endif %}"
+        onclick="setStatus('КП отправлено')">КП ушло</button>
+      <button class="sbtn sbtn-green{% if lead.status == 'Оплачено' %} active{% endif %}"
+        onclick="setStatus('Оплачено')">Оплатил</button>
+    </div>
 
-      <label>
-        Следующее действие
-        <input name="next_action" value="{{ lead.next_action }}">
-      </label>
+    <form method="post" action="/leads/{{ lead.id }}/update" class="status-form" id="status-form">
+      <input type="hidden" name="status" id="status-input" value="{{ lead.status }}">
 
-      <label>
-        ЛПР
-        <input name="decision_maker" value="{{ lead.decision_maker }}">
+      <label>Следующее действие
+        <input name="next_action" value="{{ lead.next_action }}" placeholder="Перезвонить / отправить КП / ждать ответа">
       </label>
-
-      <label>
-        Боль
-        <input name="pain_confirmed" value="{{ lead.pain_confirmed }}" placeholder="нет сайта / попросили пример / дорого">
+      <label>ЛПР
+        <input name="decision_maker" value="{{ lead.decision_maker }}" placeholder="Имя / должность владельца">
       </label>
-
-      <label>
-        КП отправлено
+      <label>Боль
+        <input name="pain_confirmed" value="{{ lead.pain_confirmed }}" placeholder="нет сайта / просят пример / дорого">
+      </label>
+      <label>КП отправлено
         <input name="offer_sent" value="{{ lead.offer_sent }}" placeholder="WhatsApp / Telegram / email">
       </label>
-
-      <label>
-        Цена
-        <input name="price_discussed" value="{{ lead.price_discussed }}" placeholder="5900 / 9900 / 14900">
+      <label>Цена
+        <input name="price_discussed" value="{{ lead.price_discussed }}" placeholder="5 900 / 9 900 / 14 900">
       </label>
-
-      <label class="full">
-        Результат
+      <label class="full">Результат
         <input name="result" value="{{ lead.result }}" placeholder="что произошло после контакта">
       </label>
-
-      <label class="full">
-        Заметки
-        <textarea name="call_notes" rows="4">{{ lead.call_notes }}</textarea>
+      <label class="full">Заметки
+        <textarea name="call_notes" rows="3">{{ lead.call_notes }}</textarea>
       </label>
-
       <button class="btn primary full" type="submit">Сохранить статус</button>
     </form>
+
+    {# возражения #}
+    <div class="objections">
+      <div class="obj-title">Быстрые ответы на возражения</div>
+      <div class="obj-item">
+        <b>"Нам не нужно"</b>
+        <span>→ Сколько клиентов в неделю не дозваниваются и уходят к конкуренту?</span>
+      </div>
+      <div class="obj-item">
+        <b>"Дорого"</b>
+        <span>→ Один новый клиент окупит. Давайте за 2 900 ₽ сделаю тест-версию?</span>
+      </div>
+      <div class="obj-item">
+        <b>"Подумаем"</b>
+        <span>→ Хорошо, когда удобно вернуться — завтра или через неделю?</span>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -121,41 +155,56 @@
   <div class="card script-card">
     <div class="row-between">
       <h2>Звонок</h2>
-      <button class="btn small" data-copy-target="call-script" onclick="copyText('call-script')">Копировать</button>
+      <button class="btn small" onclick="copyText('call-script')">Копировать</button>
     </div>
+    <div class="script-tabs">
+      <button class="stab active" onclick="showScript(this,'call-full')">Полный</button>
+      <button class="stab" onclick="showScript(this,'call-short')">Короткий</button>
+      <button class="stab" onclick="showScript(this,'call-sec')">Если секретарь</button>
+    </div>
+    <div class="message compact-msg" id="call-script">
+      <div id="call-full">Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
 
-    <div class="message compact-msg" id="call-script">Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
+Я коротко. Нашёл вашу компанию по теме {{ lead.niche }}. Я не продаю рекламу и не обещаю рост заявок. Делаю простую цифровую точку заявки за 48 часов: мини-страница, кнопки связи, FAQ, тексты услуг, скрипт звонка и таблица учёта заявок.
 
-Я коротко. Нашёл вашу компанию по теме кондиционеров/сплит-систем. Я не продаю рекламу и не обещаю рост заявок. Делаю простую цифровую точку заявки за 48 часов: мини-страница, кнопки связи, FAQ, тексты услуг, скрипт звонка/переписки и таблица учёта заявок.
-
-Могу показать пример?</div>
+Могу показать пример прямо сейчас?</div>
+      <div id="call-short" style="display:none">Здравствуйте! {{ lead.name }}, нашёл вас в интернете. Вижу нет удобной онлайн-записи. Делаю за 48 часов — от 4 900 ₽. Показать пример?</div>
+      <div id="call-sec" style="display:none">Здравствуйте! Соедините с руководителем по вопросу онлайн-заявок, пожалуйста. Это коротко — 2 минуты.</div>
+    </div>
   </div>
 
   <div class="card script-card">
     <div class="row-between">
       <h2>Сообщение</h2>
-      <button class="btn small primary" data-copy-target="message" onclick="copyText('message')">Копировать</button>
+      <button class="btn small primary" onclick="copyText('message')">Копировать</button>
     </div>
-
-    <div class="message compact-msg" id="message">{{ lead.first_message }}</div>
+    <div class="script-tabs">
+      <button class="stab active" onclick="showMsg(this,'msg-long')">Полное</button>
+      <button class="stab" onclick="showMsg(this,'msg-short')">Короткое</button>
+    </div>
+    <div class="message compact-msg" id="message">
+      <div id="msg-long">{{ lead.first_message }}</div>
+      <div id="msg-short" style="display:none">Здравствуйте! Нашёл «{{ lead.name }}» — нет страницы для онлайн-заявок. Сделаю за 48ч от 4 900 ₽. Показать пример? {{ demo_url }}</div>
+    </div>
   </div>
 
   <div class="card script-card">
     <div class="row-between">
       <h2>Мини-КП</h2>
-      <button class="btn small" data-copy-target="offer" onclick="copyText('offer')">Копировать</button>
+      <button class="btn small" onclick="copyText('offer')">Копировать</button>
     </div>
+    <div class="message compact-msg" id="offer">Пакет "Цифровая точка заявки за 48 часов"
 
-    <div class="message compact-msg" id="offer">Пакет “Цифровая точка заявки за 48 часов”.
+✓ Мини-пилот — 4 900 ₽:
+  мини-страница, кнопки связи, 5 FAQ, скрипт ответа.
 
-Мини-пилот — 5 900 ₽:
-мини-страница, кнопки связи, 5 FAQ, первый скрипт ответа.
+✓ Стандарт — 9 900 ₽:
+  + тексты услуг, скрипт звонка, таблица заявок.
 
-Первый пилот — 9 900 ₽:
-плюс тексты услуг, скрипт звонка, скрипт переписки и таблица заявок.
+✓ Полный — 14 900 ₽:
+  + расширенный FAQ, ответы на отзывы, инструкция.
 
-Стандарт — 14 900 ₽:
-плюс расширенный FAQ, ответы на отзывы и инструкция для менеджера.</div>
+Пример: {{ demo_url }}</div>
   </div>
 </section>
 
@@ -163,13 +212,47 @@
   <h2>История</h2>
   {% if events %}
     {% for e in events %}
-    <div class="event">
-      <b>{{ e.created_at }}</b>
-      <span>{{ e.note }}</span>
-    </div>
+    <div class="event"><b>{{ e.created_at }}</b><span>{{ e.note }}</span></div>
     {% endfor %}
   {% else %}
     <p class="muted">Пока нет событий.</p>
   {% endif %}
 </section>
+
+{# фиксированная кнопка следующего лида #}
+<div class="next-lead-fixed">
+  <a class="btn primary big" href="/next-lead">Следующий лид →</a>
+</div>
+
+<script>
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btns = document.querySelectorAll('[onclick*="' + id + '"]');
+    btns.forEach(b => { const orig = b.innerText; b.innerText = 'Скопировано!'; setTimeout(() => b.innerText = orig, 1500); });
+  });
+}
+
+function setStatus(val) {
+  document.getElementById('status-input').value = val;
+  document.querySelectorAll('.sbtn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function showScript(btn, id) {
+  document.querySelectorAll('#call-full,#call-short,#call-sec').forEach(el => el.style.display='none');
+  document.getElementById(id).style.display='block';
+  btn.closest('.script-tabs').querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // обновляем буфер копирования
+  document.getElementById('call-script').dataset.active = id;
+}
+
+function showMsg(btn, id) {
+  document.querySelectorAll('#msg-long,#msg-short').forEach(el => el.style.display='none');
+  document.getElementById(id).style.display='block';
+  btn.closest('.script-tabs').querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+</script>
 {% endblock %}
