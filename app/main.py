@@ -306,12 +306,14 @@ def lead_detail(request: Request, lead_id: int) -> HTMLResponse:
         return HTMLResponse("Lead not found", status_code=404)
 
     events = get_events(lead_id)
+    stats = get_dashboard_stats()
     return templates.TemplateResponse(
         "lead_detail.html",
         {
             "request": request,
             "lead": lead,
             "events": events,
+            "stats": stats,
             "statuses": STATUSES,
             "demo_url": "http://5.129.200.18:8080/demo-48h/",
         },
@@ -367,3 +369,38 @@ def next_lead_redirect() -> RedirectResponse:
     if lead_id:
         return RedirectResponse(f"/leads/{lead_id}", status_code=303)
     return RedirectResponse("/leads", status_code=303)
+
+
+from fastapi import UploadFile, File
+import tempfile, shutil
+
+
+@app.get("/import-csv", response_class=HTMLResponse)
+def import_csv_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        "import_csv.html", {"request": request}
+    )
+
+
+@app.post("/import-csv")
+async def import_csv_upload(
+    request: Request,
+    file: UploadFile = File(...),
+) -> HTMLResponse:
+    if not file.filename.endswith(".csv"):
+        return templates.TemplateResponse(
+            "import_csv.html",
+            {"request": request, "error": "Нужен .csv файл", "imported": 0},
+        )
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    from app.db import import_shortlist_csv
+    imported = import_shortlist_csv(tmp_path)
+    migrate_operator_v2()
+
+    return templates.TemplateResponse(
+        "import_csv.html",
+        {"request": request, "imported": imported, "filename": file.filename},
+    )
