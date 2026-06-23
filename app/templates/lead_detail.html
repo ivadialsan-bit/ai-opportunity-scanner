@@ -153,60 +153,79 @@
   </div>
 </section>
 
-<section class="script-grid">
-  <div class="card script-card">
-    <div class="row-between">
-      <h2>Звонок</h2>
-      <button class="btn small" onclick="copyText('call-script')">Копировать</button>
-    </div>
-    <div class="script-tabs">
-      <button class="stab active" onclick="showScript(this,'call-full')">Полный</button>
-      <button class="stab" onclick="showScript(this,'call-short')">Короткий</button>
-      <button class="stab" onclick="showScript(this,'call-sec')">Если секретарь</button>
-    </div>
-    <div class="message compact-msg" id="call-script">
-      <div id="call-full">{% if lead.call_opener %}{{ lead.call_opener }}{% else %}Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
+<section class="scripts-mega">
+  <div class="scripts-nav">
+    <button class="snav active" onclick="showScriptPanel(this,'sp-call')">Звонок</button>
+    <button class="snav" onclick="showScriptPanel(this,'sp-wa')">WhatsApp</button>
+    <button class="snav" onclick="showScriptPanel(this,'sp-email')">Email</button>
+    <button class="snav" onclick="showScriptPanel(this,'sp-kp')">КП</button>
+    <button class="snav" onclick="showScriptPanel(this,'sp-obj')">Возражения</button>
+  </div>
 
-Я коротко. Нашёл вашу компанию по теме {{ lead.niche }}. Я не продаю рекламу и не обещаю рост заявок. Делаю простую цифровую точку заявки за 48 часов: мини-страница, кнопки связи, FAQ, тексты услуг, скрипт звонка и таблица учёта заявок.
-
-Могу показать пример прямо сейчас?{% endif %}</div>
-      <div id="call-short" style="display:none">Здравствуйте! {{ lead.name }}, нашёл вас в интернете. Вижу нет удобной онлайн-записи. Делаю за 48 часов — от 4 900 ₽. Показать пример?</div>
-      <div id="call-sec" style="display:none">Здравствуйте! Соедините с руководителем по вопросу онлайн-заявок, пожалуйста. Это коротко — 2 минуты.</div>
+  <div class="sp-panel active" id="sp-call">
+    <div class="sp-header">
+      <div class="sp-tabs">
+        <button class="stab active" onclick="switchSub(this,'sc-full','call-tabs')">Полный SPIN</button>
+        <button class="stab" onclick="switchSub(this,'sc-short','call-tabs')">30 секунд</button>
+        <button class="stab" onclick="switchSub(this,'sc-sec','call-tabs')">Секретарь</button>
+      </div>
+      <button class="btn small" onclick="copyPanel('sp-call')">Копировать</button>
+    </div>
+    <div class="sp-body">
+      <div class="sub-panel call-tabs active" id="sc-full">{{ lead.call_full or lead.call_opener or "" }}</div>
+      <div class="sub-panel call-tabs" id="sc-short" style="display:none">{{ lead.call_short or "" }}</div>
+      <div class="sub-panel call-tabs" id="sc-sec" style="display:none">{{ lead.call_sec or "" }}</div>
     </div>
   </div>
 
-  <div class="card script-card">
-    <div class="row-between">
-      <h2>Сообщение</h2>
-      <button class="btn small primary" onclick="copyText('message')">Копировать</button>
+  <div class="sp-panel" id="sp-wa" style="display:none">
+    <div class="sp-header">
+      <div class="sp-tabs">
+        <button class="stab active" onclick="switchSub(this,'wa-full','wa-tabs')">Полное</button>
+        <button class="stab" onclick="switchSub(this,'wa-short','wa-tabs')">Короткое</button>
+      </div>
+      <button class="btn small" onclick="copyPanel('sp-wa')">Копировать</button>
     </div>
-    <div class="script-tabs">
-      <button class="stab active" onclick="showMsg(this,'msg-long')">Полное</button>
-      <button class="stab" onclick="showMsg(this,'msg-short')">Короткое</button>
-    </div>
-    <div class="message compact-msg" id="message">
-      <div id="msg-long">{{ lead.first_message }}</div>
-      <div id="msg-short" style="display:none">Здравствуйте! Нашёл «{{ lead.name }}» — нет страницы для онлайн-заявок. Сделаю за 48ч от 4 900 ₽. Показать пример? {{ demo_url }}</div>
+    <div class="sp-body">
+      <div class="sub-panel wa-tabs active" id="wa-full">{{ lead.msg_wa_full or lead.first_message or "" }}</div>
+      <div class="sub-panel wa-tabs" id="wa-short" style="display:none">{{ lead.msg_wa_short or "" }}</div>
     </div>
   </div>
 
-  <div class="card script-card">
-    <div class="row-between">
-      <h2>Мини-КП</h2>
-      <button class="btn small" onclick="copyText('offer')">Копировать</button>
+  <div class="sp-panel" id="sp-email" style="display:none">
+    <div class="sp-header">
+      <div class="sp-email-subject">Тема: <b>{{ lead.msg_email_subject or "Нашёл дыру в приёме заявок" }}</b></div>
+      <button class="btn small" onclick="copyPanel('sp-email')">Копировать</button>
     </div>
-    <div class="message compact-msg" id="offer">Пакет "Цифровая точка заявки за 48 часов"
+    <div class="sp-body">{{ lead.msg_email_body or "" }}</div>
+  </div>
 
-✓ Мини-пилот — 4 900 ₽:
-  мини-страница, кнопки связи, 5 FAQ, скрипт ответа.
+  <div class="sp-panel" id="sp-kp" style="display:none">
+    <div class="sp-header">
+      <div style="font-size:13px;color:var(--color-text-secondary)">Отправить после того как клиент заинтересовался</div>
+      <button class="btn small" onclick="copyPanel('sp-kp')">Копировать</button>
+    </div>
+    <div class="sp-body">{{ lead.kp_text or "" }}</div>
+  </div>
 
-✓ Стандарт — 9 900 ₽:
-  + тексты услуг, скрипт звонка, таблица заявок.
-
-✓ Полный — 14 900 ₽:
-  + расширенный FAQ, ответы на отзывы, инструкция.
-
-Пример: {{ demo_url }}</div>
+  <div class="sp-panel" id="sp-obj" style="display:none">
+    <div class="sp-header">
+      <div class="sp-tabs">
+        <button class="stab active" onclick="switchSub(this,'obj-noneed','obj-tabs')">Не нужно</button>
+        <button class="stab" onclick="switchSub(this,'obj-exp','obj-tabs')">Дорого</button>
+        <button class="stab" onclick="switchSub(this,'obj-think','obj-tabs')">Подумаем</button>
+        <button class="stab" onclick="switchSub(this,'obj-have','obj-tabs')">Есть кто-то</button>
+        <button class="stab" onclick="switchSub(this,'obj-season','obj-tabs')">Не сезон</button>
+      </div>
+      <button class="btn small" onclick="copyPanel('sp-obj')">Копировать</button>
+    </div>
+    <div class="sp-body">
+      <div class="sub-panel obj-tabs active" id="obj-noneed">{{ lead.obj_no_need or "" }}</div>
+      <div class="sub-panel obj-tabs" id="obj-exp" style="display:none">{{ lead.obj_expensive or "" }}</div>
+      <div class="sub-panel obj-tabs" id="obj-think" style="display:none">{{ lead.obj_think or "" }}</div>
+      <div class="sub-panel obj-tabs" id="obj-have" style="display:none">{{ lead.obj_have_someone or "" }}</div>
+      <div class="sub-panel obj-tabs" id="obj-season" style="display:none">{{ lead.obj_not_season or "" }}</div>
+    </div>
   </div>
 </section>
 
@@ -229,9 +248,12 @@
 <script>
 function copyText(id) {
   const el = document.getElementById(id);
+  if (!el) return;
   navigator.clipboard.writeText(el.innerText).then(() => {
-    const btns = document.querySelectorAll('[onclick*="' + id + '"]');
-    btns.forEach(b => { const orig = b.innerText; b.innerText = 'Скопировано!'; setTimeout(() => b.innerText = orig, 1500); });
+    document.querySelectorAll('[onclick*="' + id + '"]').forEach(b => {
+      const o = b.innerText; b.innerText = 'Скопировано!';
+      setTimeout(() => b.innerText = o, 1500);
+    });
   });
 }
 
@@ -241,20 +263,28 @@ function setStatus(val) {
   event.currentTarget.classList.add('active');
 }
 
-function showScript(btn, id) {
-  document.querySelectorAll('#call-full,#call-short,#call-sec').forEach(el => el.style.display='none');
-  document.getElementById(id).style.display='block';
-  btn.closest('.script-tabs').querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+function showScriptPanel(btn, id) {
+  document.querySelectorAll('.snav').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.sp-panel').forEach(p => p.style.display = 'none');
   btn.classList.add('active');
-  // обновляем буфер копирования
-  document.getElementById('call-script').dataset.active = id;
+  document.getElementById(id).style.display = 'block';
 }
 
-function showMsg(btn, id) {
-  document.querySelectorAll('#msg-long,#msg-short').forEach(el => el.style.display='none');
-  document.getElementById(id).style.display='block';
-  btn.closest('.script-tabs').querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+function switchSub(btn, id, cls) {
+  document.querySelectorAll('.' + cls).forEach(el => el.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+  btn.closest('.sp-tabs').querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+}
+
+function copyPanel(panelId) {
+  const panel = document.getElementById(panelId);
+  const active = panel.querySelector('.sub-panel.active, .sp-body');
+  const text = (active ? active : panel.querySelector('.sp-body')).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = panel.querySelector('.btn.small');
+    if (btn) { const o = btn.innerText; btn.innerText = 'Скопировано!'; setTimeout(() => btn.innerText = o, 1500); }
+  });
 }
 </script>
 {% endblock %}
