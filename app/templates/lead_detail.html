@@ -68,10 +68,12 @@
       <div><span>Адрес</span><b>{{ lead.address or "—" }}</b></div>
     </div>
 
-    <div class="product-box">
-      <span>Рекомендованный продукт</span>
-      <h3>{{ lead.recommended_product or "Цифровая точка заявки за 48 часов" }}</h3>
-      <p><b>{{ lead.recommended_price or "9 900 ₽" }}</b> · {{ lead.recommended_reason or "Нет сайта — быстрая продажа." }}</p>
+    <div class="what-to-sell-box">
+      <div class="wtb-label">Что продавать этому клиенту</div>
+      <div class="wtb-product">{{ lead.recommended_product or "Цифровая точка заявки за 48 часов" }}</div>
+      <div class="wtb-price">{{ lead.recommended_price or "7 900 ₽" }}</div>
+      <div class="wtb-what">{{ lead.what_to_sell or lead.recommended_reason or "—" }}</div>
+      <div class="wtb-reason">{{ lead.recommended_reason or "" }}</div>
     </div>
 
     <div class="time-box">
@@ -163,11 +165,11 @@
       <button class="stab" onclick="showScript(this,'call-sec')">Если секретарь</button>
     </div>
     <div class="message compact-msg" id="call-script">
-      <div id="call-full">Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
+      <div id="call-full">{% if lead.call_opener %}{{ lead.call_opener }}{% else %}Здравствуйте. Подскажите, кто у вас занимается заявками с сайта, карт и мессенджеров?
 
 Я коротко. Нашёл вашу компанию по теме {{ lead.niche }}. Я не продаю рекламу и не обещаю рост заявок. Делаю простую цифровую точку заявки за 48 часов: мини-страница, кнопки связи, FAQ, тексты услуг, скрипт звонка и таблица учёта заявок.
 
-Могу показать пример прямо сейчас?</div>
+Могу показать пример прямо сейчас?{% endif %}</div>
       <div id="call-short" style="display:none">Здравствуйте! {{ lead.name }}, нашёл вас в интернете. Вижу нет удобной онлайн-записи. Делаю за 48 часов — от 4 900 ₽. Показать пример?</div>
       <div id="call-sec" style="display:none">Здравствуйте! Соедините с руководителем по вопросу онлайн-заявок, пожалуйста. Это коротко — 2 минуты.</div>
     </div>
