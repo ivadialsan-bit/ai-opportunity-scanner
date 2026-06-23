@@ -172,7 +172,7 @@
       <button class="btn small" onclick="copyPanel('sp-call')">Копировать</button>
     </div>
     <div class="sp-body">
-      <div class="sub-panel call-tabs active" id="sc-full">{{ lead.call_full or lead.call_opener or "" }}</div>
+      <div class="sub-panel call-tabs active" id="sc-full">{{ lead.call_full or "" }}</div>
       <div class="sub-panel call-tabs" id="sc-short" style="display:none">{{ lead.call_short or "" }}</div>
       <div class="sub-panel call-tabs" id="sc-sec" style="display:none">{{ lead.call_sec or "" }}</div>
     </div>
@@ -187,7 +187,7 @@
       <button class="btn small" onclick="copyPanel('sp-wa')">Копировать</button>
     </div>
     <div class="sp-body">
-      <div class="sub-panel wa-tabs active" id="wa-full">{{ lead.msg_wa_full or lead.first_message or "" }}</div>
+      <div class="sub-panel wa-tabs active" id="wa-full">{{ lead.msg_wa_full or "" }}</div>
       <div class="sub-panel wa-tabs" id="wa-short" style="display:none">{{ lead.msg_wa_short or "" }}</div>
     </div>
   </div>
@@ -279,8 +279,9 @@ function switchSub(btn, id, cls) {
 
 function copyPanel(panelId) {
   const panel = document.getElementById(panelId);
-  const active = panel.querySelector('.sub-panel.active, .sp-body');
-  const text = (active ? active : panel.querySelector('.sp-body')).innerText;
+  const active = panel.querySelector('.sub-panel[style="display: block;"], .sub-panel.active:not([style*="none"]), .sub-panel:not([style*="none"])');
+  const body = panel.querySelector('.sp-body');
+  const text = (active || body).innerText.trim();
   navigator.clipboard.writeText(text).then(() => {
     const btn = panel.querySelector('.btn.small');
     if (btn) { const o = btn.innerText; btn.innerText = 'Скопировано!'; setTimeout(() => btn.innerText = o, 1500); }
