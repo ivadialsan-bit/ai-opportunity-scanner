@@ -181,16 +181,32 @@ document.getElementById('niche-search').addEventListener('input', function() {
   });
 });
 
-// выбор города — показываем выбранное
+// выбор города — показываем выбранное и скрываем список
 document.getElementById('city-select').addEventListener('change', function() {
   document.getElementById('city-chosen').textContent = this.value;
   document.getElementById('city-chosen').style.color = '#3fb950';
+  this.style.display = 'none';
+  document.getElementById('city-search').style.display = 'none';
+});
+document.getElementById('city-chosen').addEventListener('click', function() {
+  const sel = document.getElementById('city-select');
+  const inp = document.getElementById('city-search');
+  sel.style.display = sel.style.display === 'none' ? '' : 'none';
+  inp.style.display = inp.style.display === 'none' ? '' : 'none';
 });
 
-// выбор ниши
+// выбор ниши — показываем выбранное и скрываем список
 document.getElementById('niche-select').addEventListener('change', function() {
   document.getElementById('niche-chosen').textContent = this.value;
   document.getElementById('niche-chosen').style.color = '#3fb950';
+  this.style.display = 'none';
+  document.getElementById('niche-search').style.display = 'none';
+});
+document.getElementById('niche-chosen').addEventListener('click', function() {
+  const sel = document.getElementById('niche-select');
+  const inp = document.getElementById('niche-search');
+  sel.style.display = sel.style.display === 'none' ? '' : 'none';
+  inp.style.display = inp.style.display === 'none' ? '' : 'none';
 });
 
 // прогресс при сканировании
