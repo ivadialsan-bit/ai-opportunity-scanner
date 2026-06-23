@@ -1,112 +1,203 @@
 {% extends "layout.html" %}
 {% block content %}
-<section class="topline">
+<section class="lead-header">
   <div>
-    <div class="eyebrow">Сканер</div>
-    <h1>Скан по городу и нише</h1>
-    <p class="sub">OSM / Overpass — fallback. Для денег важнее shortlist и прозвон.</p>
+    <h1>Сканер лидов</h1>
+    <p style="color:#8b949e;font-size:14px;margin:.25rem 0 0">Яндекс Карты + 2GIS · 60 городов · 56 ниш</p>
   </div>
-  <a class="btn" href="/leads">Очередь</a>
+  <div class="top-actions">
+    <a class="btn" href="/leads">Очередь</a>
+    <a class="btn" href="/import-csv">Импорт CSV</a>
+  </div>
 </section>
 
-<section class="card">
-  <form method="post" action="/scanner" class="scanner-form">
-    <label>
-      Город
-      <select name="city">
-        {% for c in cities %}
-        <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
-      </select>
-    </label>
+<div class="card scanner-card">
+  <form method="post" action="/scanner" id="scan-form">
 
-    <label>
-      Ниша
-      <input name="niche" list="niches" value="кондиционеры">
-      <datalist id="niches">
-        {% for n in niches %}
-        <option value="{{ n }}"></option>
-        {% endfor %}
-      </datalist>
-    </label>
+    <div class="scan-grid">
+      <div class="scan-field">
+        <label class="scan-label">Город</label>
+        <div class="custom-select-wrap">
+          <input type="text" id="city-search" placeholder="Поиск города..." autocomplete="off" class="scan-search-input">
+          <select name="city" id="city-select" size="6" class="scan-list">
+            {% for c in cities %}
+            <option value="{{ c }}">{{ c }}</option>
+            {% endfor %}
+          </select>
+          <div class="scan-selected" id="city-chosen">Выбрать город</div>
+        </div>
+      </div>
 
-    <label>
-      Лимит
-      <input name="limit" type="number" value="50" min="1" max="200">
-    </label>
+      <div class="scan-field">
+        <label class="scan-label">Ниша</label>
+        <div class="custom-select-wrap">
+          <input type="text" id="niche-search" placeholder="Поиск ниши..." autocomplete="off" class="scan-search-input">
+          <select name="niche" id="niche-select" size="6" class="scan-list">
+            {% for n in niches %}
+            <option value="{{ n }}">{{ n }}</option>
+            {% endfor %}
+          </select>
+          <div class="scan-selected" id="niche-chosen">Выбрать нишу</div>
+        </div>
+      </div>
 
-    <label>
-      Confidence
-      <select name="min_confidence">
-        <option value="medium">medium</option>
-        <option value="high">high</option>
-        <option value="low">low</option>
-      </select>
-    </label>
+      <div class="scan-field scan-options">
+        <label class="scan-label">Параметры</label>
 
-    <label>
-      Источник
-      <select name="source">
-        <option value="osm">OpenStreetMap / Overpass</option>
-        <option value="2gis">2ГИС API</option>
-      </select>
-    </label>
+        <label class="scan-sublabel">Источник</label>
+        <div class="source-btns">
+          <button type="button" class="src-btn active" data-val="yandex" onclick="setSrc(this)">Яндекс</button>
+          <button type="button" class="src-btn" data-val="2gis" onclick="setSrc(this)">2GIS</button>
+          <button type="button" class="src-btn" data-val="yandex,2gis" onclick="setSrc(this)">Оба</button>
+        </div>
+        <input type="hidden" name="source" id="source-input" value="yandex">
 
-    <label class="check">
-      <input type="checkbox" name="require_contact" checked>
-      Импортировать только с контактами
-    </label>
+        <label class="scan-sublabel" style="margin-top:1rem">Лимит лидов</label>
+        <div class="limit-btns">
+          <button type="button" class="lim-btn" data-val="20" onclick="setLim(this)">20</button>
+          <button type="button" class="lim-btn active" data-val="30" onclick="setLim(this)">30</button>
+          <button type="button" class="lim-btn" data-val="50" onclick="setLim(this)">50</button>
+          <button type="button" class="lim-btn" data-val="100" onclick="setLim(this)">100</button>
+        </div>
+        <input type="hidden" name="limit" id="limit-input" value="30">
 
-    <label class="check">
-      <input type="checkbox" name="exclude_chains" checked>
-      Без сетей
-    </label>
+        <label class="scan-sublabel" style="margin-top:1rem">Фильтры</label>
+        <label class="toggle-row">
+          <input type="checkbox" name="require_contact" checked>
+          <span>Только с контактами</span>
+        </label>
 
-    <button class="btn primary" type="submit">Сканировать</button>
-<p class="muted full">Подсказка по 2ГИС: если контакты не приходят, нужен доступ к items.contact_groups в API-ключе.</p>
+        <button class="btn primary scan-go" type="submit" id="scan-btn">Сканировать</button>
+      </div>
+    </div>
+
   </form>
-</section>
+</div>
 
 {% if result %}
-<section class="card">
-  <div class="row-between">
-    <h2>Результат: {{ result.city }} / {{ result.niche }}</h2>
-    <a class="btn primary" href="/leads">К лидам</a>
+<div class="card scan-result">
+  <div class="scan-result-header">
+    <div>
+      <div class="eyebrow">Результат скана</div>
+      <h2>{{ result.city }} / {{ result.niche }}</h2>
+    </div>
+    <a class="btn primary" href="/leads">К лидам →</a>
   </div>
 
   {% if result.api_note %}
-  <div class="gap-box">
-    <span>Комментарий источника</span>
-    <p>{{ result.api_note }}</p>
-  </div>
+  <div class="scan-note">{{ result.api_note }}</div>
   {% endif %}
 
-  <section class="stats compact">
-    <div class="stat"><strong>{{ result.raw_count }}</strong><span>сырых</span></div>
-    <div class="stat"><strong>{{ result.sales_count }}</strong><span>после фильтра</span></div>
-    <div class="stat"><strong>{{ result.imported }}</strong><span>добавлено</span></div>
-  </section>
+  <div class="scan-stats">
+    <div class="stat-box"><div class="stat-num">{{ result.raw_count }}</div><div class="stat-lbl">найдено</div></div>
+    <div class="stat-box"><div class="stat-num">{{ result.sales_count }}</div><div class="stat-lbl">после фильтра</div></div>
+    <div class="stat-box stat-box-green"><div class="stat-num">{{ result.imported }}</div><div class="stat-lbl">добавлено в очередь</div></div>
+  </div>
 
-  <table class="dense">
+  {% if result.top %}
+  <table class="scan-table">
     <thead>
-      <tr>
-        <th>Score</th>
-        <th>Компания</th>
-        <th>Телефон</th>
-        <th>Сайт</th>
-      </tr>
+      <tr><th>Score</th><th>Компания</th><th>Телефон</th><th>Email</th><th>Сайт</th><th>Адрес</th></tr>
     </thead>
     <tbody>
-      {% for lead in result.top %}
-      <tr>
+    {% for lead in result.top %}
+      <tr class="{% if 'hot_target' in (lead.opportunity_flags or []) %}row-hot{% endif %}">
         <td><b>{{ lead.lead_score }}</b></td>
         <td>{{ lead.name }}</td>
-        <td>{{ lead.phone or "-" }}</td>
-        <td>{{ lead.website or "-" }}</td>
+        <td>{% if lead.phone %}<a href="tel:{{ lead.phone }}" style="color:#58a6ff">{{ lead.phone }}</a>{% else %}—{% endif %}</td>
+        <td>{{ lead.email or "—" }}</td>
+        <td>{% if lead.website %}<a href="{{ lead.website }}" target="_blank" style="color:#58a6ff">есть</a>{% else %}—{% endif %}</td>
+        <td style="font-size:12px;color:#8b949e">{{ (lead.address or "")[:40] }}</td>
       </tr>
-      {% endfor %}
+    {% endfor %}
     </tbody>
   </table>
-</section>
+  {% endif %}
+</div>
 {% endif %}
+
+<style>
+.scanner-card{padding:1.5rem}
+.scan-grid{display:grid;grid-template-columns:1fr 1fr 220px;gap:1.5rem;align-items:start}
+.scan-field{}
+.scan-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;margin-bottom:.5rem}
+.scan-sublabel{display:block;font-size:11px;color:#8b949e;margin-bottom:.35rem}
+.scan-search-input{width:100%;padding:.5rem .75rem;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:13px;margin-bottom:.35rem}
+.scan-search-input:focus{outline:none;border-color:#1f6feb}
+.scan-list{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;font-size:13px;padding:.25rem 0}
+.scan-list option{padding:.35rem .75rem;cursor:pointer}
+.scan-list option:checked,.scan-list option:hover{background:#1f6feb;color:#fff}
+.scan-selected{margin-top:.4rem;font-size:13px;font-weight:600;color:#3fb950;min-height:18px}
+.source-btns,.limit-btns{display:flex;gap:.4rem;flex-wrap:wrap}
+.src-btn,.lim-btn{padding:.4rem .8rem;font-size:12px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#8b949e;cursor:pointer}
+.src-btn.active,.lim-btn.active{background:#1f6feb;color:#fff;border-color:#1f6feb}
+.toggle-row{display:flex;align-items:center;gap:.5rem;font-size:13px;color:#e6edf3;cursor:pointer;margin-bottom:.75rem}
+.scan-go{width:100%;margin-top:1rem;padding:.75rem}
+.scan-options{}
+.scan-result{margin-top:1.5rem;padding:1.5rem}
+.scan-result-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.scan-note{background:#2d2008;border:1px solid #6e4c0e;color:#e3b341;padding:.75rem 1rem;border-radius:8px;font-size:13px;margin-bottom:1rem}
+.scan-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+.stat-box{background:#0d1117;border-radius:8px;padding:.85rem 1rem;text-align:center}
+.stat-box-green{border:1px solid #1a5c35}
+.stat-num{font-size:28px;font-weight:700;color:#e6edf3}
+.stat-box-green .stat-num{color:#3fb950}
+.stat-lbl{font-size:12px;color:#8b949e;margin-top:.25rem}
+.scan-table{width:100%;border-collapse:collapse;font-size:13px}
+.scan-table th{text-align:left;padding:.5rem .75rem;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8b949e;border-bottom:1px solid #21262d}
+.scan-table td{padding:.5rem .75rem;border-bottom:1px solid #161b22}
+.scan-table tr:hover td{background:#161b22}
+.row-hot td:first-child{border-left:3px solid #3fb950}
+@media(max-width:700px){.scan-grid{grid-template-columns:1fr}}
+</style>
+
+<script>
+function setSrc(btn) {
+  document.querySelectorAll('.src-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('source-input').value = btn.dataset.val;
+}
+function setLim(btn) {
+  document.querySelectorAll('.lim-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('limit-input').value = btn.dataset.val;
+}
+
+// живой поиск по городам
+document.getElementById('city-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  const sel = document.getElementById('city-select');
+  Array.from(sel.options).forEach(o => {
+    o.style.display = o.text.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// живой поиск по нишам
+document.getElementById('niche-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  const sel = document.getElementById('niche-select');
+  Array.from(sel.options).forEach(o => {
+    o.style.display = o.text.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// выбор города — показываем выбранное
+document.getElementById('city-select').addEventListener('change', function() {
+  document.getElementById('city-chosen').textContent = this.value;
+  document.getElementById('city-chosen').style.color = '#3fb950';
+});
+
+// выбор ниши
+document.getElementById('niche-select').addEventListener('change', function() {
+  document.getElementById('niche-chosen').textContent = this.value;
+  document.getElementById('niche-chosen').style.color = '#3fb950';
+});
+
+// прогресс при сканировании
+document.getElementById('scan-form').addEventListener('submit', function() {
+  const btn = document.getElementById('scan-btn');
+  btn.textContent = 'Сканирую...';
+  btn.disabled = true;
+});
+</script>
 {% endblock %}
