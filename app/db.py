@@ -305,6 +305,23 @@ def get_lead(lead_id: int) -> dict[str, Any] | None:
         lead.update(scripts)
     except Exception:
         pass
+    # квалификация — рекомендуемые продукты
+    try:
+        from app.qualification import qualify, PRODUCTS, QUALIFICATION_QUESTIONS
+        flags = lead.get("opportunity_flags", "")
+        recs = qualify(
+            has_website=bool(lead.get("website")),
+            has_socials="vk_present" in flags,
+            has_bot=False,
+            niche=lead.get("niche", ""),
+            rating=float(lead.get("rating") or 0),
+            source=lead.get("source", ""),
+        )
+        lead["qualify_recs"] = recs
+        lead["all_products"] = PRODUCTS
+        lead["qualify_questions"] = QUALIFICATION_QUESTIONS
+    except Exception:
+        pass
     return lead
 
 
