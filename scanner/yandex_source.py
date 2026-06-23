@@ -180,6 +180,7 @@ def scan_yandex(
 
     niche_key = niche.strip().lower()
     queries = YANDEX_NICHES.get(niche_key, [f"{niche.strip()} {city}"])
+    queries = queries[:1]  # только первый запрос — быстрее
 
     leads: list[YandexLead] = []
     seen: set[str] = set()
@@ -252,7 +253,7 @@ def scan_yandex(
             if skip >= min(total_found, limit * 2):
                 break
 
-            time.sleep(random.uniform(0.8, 1.5))
+            time.sleep(random.uniform(0.3, 0.7))
 
     leads.sort(key=lambda x: x.lead_score, reverse=True)
     return leads[:limit], note
